@@ -44,19 +44,31 @@ def reload_package(package):
     reload_recursive_ex(package)
 
 
+registered = False
+
+
 def register():
     import seventina
     assert seventina.__spec__ is not None
     seventina.register()
+
+    global registered
+    registered = True
 
 
 def unregister():
     import seventina
     seventina.unregister()
 
+    global registered
+    registered = False
+
 
 def reload():
     import seventina
-    seventina.unregister()
+    if registered:
+        seventina.unregister()
     reload_package(seventina)
     seventina.register()
+
+__import__('bpy').a = reload

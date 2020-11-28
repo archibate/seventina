@@ -2,7 +2,7 @@ from .utils import *
 
 
 @ti.data_oriented
-class Rasterizer:
+class Painter:
     @ti.func
     def draw_line(self, src, dst):
         dlt = dst - src
@@ -36,10 +36,30 @@ class Rasterizer:
             if all(wei >= 0):
                 yield pos, wei
 
-    def __init__(self, N):
+    def __init__(self, N, maxverts, maxfaces):
         self.N = tovector(N)
         self.occup = ti.field(int, self.N)
         self.depth = ti.field(float, self.N)
+        self.color = ti.Vector.field(3, float, self.N)
+
+        self.verts = ti.Vector.field(3, float, maxverts)
+        self.faces = ti.Vector.field(3, int, maxfaces)
+        self.nfaces = ti.field(int, ())
+
+        self.pers = ti.Matrix.field(4, 4, float, ())
+
+        @ti.materialize_callback
+        @ti.kernel
+        def _():
+            self.pers[None] = ti.Matrix.identity(float, 4)
+
+    @ti.func
+    def to_perspect(self, p):
+        return mapplies(self.pers[None], p)
+
+    @ti.func
+    def to_viewport(self, p):
+        return (p.xy * 0.5 + 0.5) * self.N
 
     @ti.kernel
     def raster(self):
@@ -48,7 +68,9 @@ class Rasterizer:
             self.depth[i, j] = 1e6
         for f in ti.smart(self.get_faces_range()):
             A, B, C = self.get_face_vertices(f)
-            for pos, wei in ti.smart(self.draw_trip(A.xy, B.xy, C.xy)):
+            A, B, C = [self.to_perspect(p) for p in [A, B, C]]
+            a, b, c = [self.to_viewport(p) for p in [A, B, C]]
+            for pos, wei in ti.smart(self.draw_trip(a, b, c)):
                 P = int(pos)
                 depth = wei.x * A.z + wei.y * B.z + wei.z * C.z
                 if ti.atomic_min(self.depth[P], depth) > depth:
@@ -60,20 +82,15 @@ class Rasterizer:
     def get_face_vertices(self, f):
         raise NotImplementedError
 
-
-class Painter(Rasterizer):
-    def __init__(self, N):
-        super().__init__(N)
-        self.color = ti.Vector.field(3, float, self.N)
-
     @ti.kernel
     def paint(self):
         for P in ti.grouped(self.occup):
             f = self.occup[P] - 1
             if f == -1:
                 continue
+
             A, B, C = self.get_face_vertices(f)
-            a, b, c = A.xy, B.xy, C.xy
+            a, b, c = [self.to_viewport(self.to_perspect(p)) for p in [A, B, C]]
             n = (b - a).cross(c - a)
             abn = (a - b) / n
             bcn = (b - c) / n
@@ -82,24 +99,19 @@ class Painter(Rasterizer):
             w_ca = (P - c).cross(can)
             wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
 
-            self.color[P] = self.interp(wei)
+            wei /= V(*[mapply(self.pers[None], p, 1)[1] for p in [A, B, C]])
+            wei /= wei.x + wei.y + wei.z
+            self.color[P] = self.interpolate(wei, f)
 
-    def interp(self):
-        raise NotImplementedError
+    def render(self):
+        self.color.fill(0)
+        self.raster()
+        self.paint()
 
-
-class DynamicPainter(Painter):
-    def __init__(self, N, maxverts, maxfaces):
-        super().__init__(N)
-
-        self.maxverts, self.maxfaces = maxverts, maxfaces
-        self.verts = ti.Vector.field(3, float, self.maxverts)
-        self.faces = ti.Vector.field(3, int, self.maxfaces)
-        self.nfaces = ti.field(int, ())
-
-    @ti.func
-    def interp(self, wei):
-        return wei
+    def interpolate(self, wei, f):
+        A, B, C = self.get_face_vertices(f)
+        pos = wei.x * A + wei.y * B + wei.z * C
+        return pos
 
     @ti.func
     def get_faces_range(self):
@@ -130,10 +142,6 @@ class Main(Painter):
         with ezprof.scope('init0'):
             self.faces.from_numpy(obj['f'])
             self.verts.from_numpy(obj['v'])
-
-    @ti.func
-    def interp(self, wei):
-        return wei
 
     @ti.func
     def get_faces_range(self):

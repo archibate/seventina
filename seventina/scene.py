@@ -1,5 +1,5 @@
 from .utils import *
-from .raster import DynamicPainter
+from .raster import Painter
 
 
 @ti.data_oriented
@@ -38,28 +38,44 @@ class BlenderOutput:
             out[base + 3] = 1
 
 
-class BlenderPainter(DynamicPainter):
-    def __init__(self, N, maxverts, maxfaces):
-        super().__init__(N, maxverts, maxfaces)
-
-    @ti.func
-    def interp(self, wei):
-        return wei
-
+class BlenderPainter(Painter):
+    @ti.kernel
     def _update_mesh_verts(self, verts: ti.ext_arr()):
         for i in range(verts.shape[0]):
             for k in ti.static(range(3)):
                 self.verts[i][k] = verts[i, k]
+            #self.verts[i] = mapplies(self.pers[None], self.verts[i])
 
+    @ti.kernel
     def _update_mesh_faces(self, faces: ti.ext_arr()):
         for i in range(faces.shape[0]):
             for k in ti.static(range(3)):
                 self.faces[i][k] = faces[i, k]
 
     def update_mesh(self, verts, faces):
-        self._update_mesh_verts(verts * 128 + 256)
+        self._update_mesh_verts(verts)
         self._update_mesh_faces(faces)
         self.nfaces[None] = len(faces)
+
+
+class BlenderScene:
+    def __init__(self):
+        self.painter = BlenderPainter((512, 512), 4096, 4096)
+        self.output = BlenderOutput()
+
+    def update_scene(self):
+        import bpy
+
+        verts, faces = blender_get_object_mesh(bpy.data.objects['Cube'])
+        self.painter.update_mesh(verts, faces)
+
+    def update_region(self, region3d):
+        self.painter.pers[None] = np.array(region3d.perspective_matrix).tolist()
+
+    def render(self, pixels, width, height):
+        self.update_scene()
+        self.painter.render()
+        self.output.render(self.painter.color, pixels, width, height)
 
 
 def bmesh_verts_to_numpy(bm):
@@ -89,23 +105,4 @@ def blender_get_object_mesh(object):
     bmesh.ops.triangulate(bm, faces=bm.faces)
     verts = bmesh_verts_to_numpy(bm)
     faces = bmesh_faces_to_numpy(bm)
-    assert faces.shape[1] == 3
     return verts, faces
-
-
-class BlenderScene:
-    def __init__(self):
-        self.painter = BlenderPainter((512, 512), 4096, 4096)
-        self.output = BlenderOutput()
-
-    def update_scene(self):
-        import bpy
-
-        verts, faces = blender_get_object_mesh(bpy.data.objects['Cube'])
-        self.painter.update_mesh(verts, faces)
-
-    def render(self, pixels, width, height):
-        self.update_scene()
-        self.painter.raster()
-        self.painter.paint()
-        self.output.render(self.painter.color, pixels, width, height)

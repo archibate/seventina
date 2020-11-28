@@ -10,8 +10,59 @@ setattr(ti, 'static', lambda x, *xs: [x] + list(xs) if xs else x) or setattr(
         ti.Matrix.is_global))
 
 
+ti.smart = lambda x: x
+
+@eval('lambda x: x()')
+def _():
+    import copy, ast
+    from taichi.lang.transformer import ASTTransformerBase, ASTTransformerPreprocess
+
+    old_get_decorator = ASTTransformerBase.get_decorator
+
+    @staticmethod
+    def get_decorator(node):
+        if not (isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute) and isinstance(
+                    node.func.value, ast.Name) and node.func.value.id == 'ti'
+                and node.func.attr in ['smart']):
+            return old_get_decorator(node)
+        return node.func.attr
+
+    ASTTransformerBase.get_decorator = get_decorator
+
+    old_visit_struct_for = ASTTransformerPreprocess.visit_struct_for
+
+    def visit_struct_for(self, node, is_grouped):
+        if not is_grouped:
+            decorator = self.get_decorator(node.iter)
+            if decorator == 'smart':  # so smart!
+                self.current_control_scope().append('smart')
+                self.generic_visit(node, ['body'])
+                t = self.parse_stmt('if 1: pass; del a')
+                t.body[0] = node
+                target = copy.deepcopy(node.target)
+                target.ctx = ast.Del()
+                if isinstance(target, ast.Tuple):
+                    for tar in target.elts:
+                        tar.ctx = ast.Del()
+                t.body[-1].targets = [target]
+                return t
+
+        return old_visit_struct_for(self, node, is_grouped)
+
+    ASTTransformerPreprocess.visit_struct_for = visit_struct_for
+
+
 def V(*xs):
     return ti.Vector(xs)
+
+
+def V23(xy, z):
+    return V(xy.x, xy.y, z)
+
+
+def V34(xyz, w):
+    return V(xyz.x, xyz.y, xyz.z, w)
 
 
 ti.Matrix.xy = property(lambda v: V(v.x, v.y))
@@ -72,44 +123,18 @@ def bilerp(f: ti.template(), pos):
             f[I + V(0, 1)] * y[0] * x[1])
 
 
-ti.smart = lambda x: x
+@ti.func
+def mapply(mat, pos, wei):
+    res = ti.Vector([mat[i, 3] for i in range(3)]) * wei
+    for i, j in ti.static(ti.ndrange(3, 3)):
+        res[i] += mat[i, j] * pos[j]
+    rew = mat[3, 3] * wei
+    for i in ti.static(range(3)):
+        rew += mat[3, i] * pos[i]
+    return res, rew
 
-@eval('lambda x: x()')
-def _():
-    import copy, ast
-    from taichi.lang.transformer import ASTTransformerBase, ASTTransformerPreprocess
 
-    old_get_decorator = ASTTransformerBase.get_decorator
-
-    @staticmethod
-    def get_decorator(node):
-        if not (isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute) and isinstance(
-                    node.func.value, ast.Name) and node.func.value.id == 'ti'
-                and node.func.attr in ['smart']):
-            return old_get_decorator(node)
-        return node.func.attr
-
-    ASTTransformerBase.get_decorator = get_decorator
-
-    old_visit_struct_for = ASTTransformerPreprocess.visit_struct_for
-
-    def visit_struct_for(self, node, is_grouped):
-        if not is_grouped:
-            decorator = self.get_decorator(node.iter)
-            if decorator == 'smart':  # so smart!
-                self.current_control_scope().append('smart')
-                self.generic_visit(node, ['body'])
-                t = self.parse_stmt('if 1: pass; del a')
-                t.body[0] = node
-                target = copy.deepcopy(node.target)
-                target.ctx = ast.Del()
-                if isinstance(target, ast.Tuple):
-                    for tar in target.elts:
-                        tar.ctx = ast.Del()
-                t.body[-1].targets = [target]
-                return t
-
-        return old_visit_struct_for(self, node, is_grouped)
-
-    ASTTransformerPreprocess.visit_struct_for = visit_struct_for
+@ti.func
+def mapplies(mat, pos):
+    res, rew = mapply(mat, pos, 1)
+    return res / rew

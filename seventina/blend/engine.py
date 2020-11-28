@@ -85,6 +85,7 @@ def render_main(width, height, region3d):
         if not hasattr(self, 'scene'):
             self.scene = init_scene()
 
+        self.scene.update_region(region3d)
         self.scene.render(pixels, width, height)
 
     worker.wait_done()
