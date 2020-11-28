@@ -35,12 +35,12 @@ class RasterizerMethods:
     def draw_trip(self, a, b, c):
         bot, top = ifloor(min(a, b, c)), iceil(max(a, b, c))
         n = abs((b - a).cross(c - a))
-        ab = (a - b).normalized()
-        bc = (b - c).normalized()
-        ca = (c - a).normalized()
         abn = (a - b) / n
         bcn = (b - c) / n
         can = (c - a) / n
+        ab = (a - b).normalized()
+        bc = (b - c).normalized()
+        ca = (c - a).normalized()
         for i, j in ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1)):
             pos = float(V(i, j))
             d_ab = (pos - a).cross(ab)
@@ -60,47 +60,78 @@ class Rasterizer(RasterizerMethods):
         self.verts = verts
         self.faces = faces
         self.occup = ti.field(int, self.N)
-        self.color = ti.field(float, self.N)
         self.depth = ti.field(float, self.N)
 
     @ti.kernel
-    def render(self, mx: float, my: float):
+    def raster(self):
         for i, j in self.occup:
             self.occup[i, j] = 0
             self.depth[i, j] = 1e6
         for f in self.faces:
             face = self.faces[f]
-            a, b, c = self.verts[face.x], self.verts[face.y], self.verts[face.z]
-            for pos, wei in ti.smart(self.draw_trip(a.xy, b.xy, c.xy)):
+            A, B, C = self.verts[face.x], self.verts[face.y], self.verts[face.z]
+            for pos, wei in ti.smart(self.draw_trip(A.xy, B.xy, C.xy)):
                 P = int(pos)
-                depth = wei.x * a.z + wei.y * b.z + wei.z * c.z
+                depth = wei.x * A.z + wei.y * B.z + wei.z * C.z
                 if ti.atomic_min(self.depth[P], depth) >= depth:
                     self.occup[P] = f + 1
-                    self.color[P] = depth / 256
 
 
-class RasterizerMain(Rasterizer):
+class RasterizerPaint(Rasterizer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.color = ti.Vector.field(3, float, self.N)
+
+    @ti.kernel
+    def paint(self):
+        for P in ti.grouped(self.occup):
+            f = self.occup[P] - 1
+            if f == -1:
+                continue
+            face = self.faces[f]
+            A, B, C = self.verts[face.x], self.verts[face.y], self.verts[face.z]
+            a, b, c = A.xy, B.xy, C.xy
+            n = abs((b - a).cross(c - a))
+            abn = (a - b) / n
+            bcn = (b - c) / n
+            can = (c - a) / n
+            w_bc = (P - b).cross(bcn)
+            w_ca = (P - c).cross(can)
+            wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
+
+            clra = float(V(1, 0, 0))
+            clrb = float(V(0, 1, 0))
+            clrc = float(V(0, 0, 1))
+            color = wei.x * clra + wei.y * clrb + wei.z * clrc
+            self.color[P] = color
+
+
+class RasterizerMain(RasterizerPaint):
     def __init__(self, N=(512, 512)):
         verts = ti.Vector.field(3, float, 6)
         faces = ti.Vector.field(3, int, 2)
         super().__init__(N, verts, faces)
 
-        faces.from_numpy(np.array([
-            (0, 1, 2), (3, 4, 5),
-            ], dtype=np.int32))
-        verts.from_numpy(np.array([
-            (0, 0, 128), (512, 0, 128), (256, 512, 128),
-            (256, 0, 0), (512, 512, 128), (0, 512, 256),
-            ], dtype=np.float32))
+        with ezprof.scope('init0'):
+            faces.from_numpy(np.array([
+                (0, 1, 2), (3, 4, 5),
+                ], dtype=np.int32))
+            verts.from_numpy(np.array([
+                (0, 0, 128), (512, 0, 128), (256, 512, 128),
+                (256, 0, 0), (512, 512, 128), (0, 512, 256),
+                ], dtype=np.float32))
 
     def main(self):
         gui = ti.GUI('raster')
-        with ezprof.scope('compile'):
-            self.render(0, 0)
+        with ezprof.scope('raster0'):
+            self.raster()
+        with ezprof.scope('paint0'):
+            self.paint()
         while gui.running and not gui.get_event(gui.ESCAPE):
-            mx, my = gui.get_cursor_pos()
-            with ezprof.scope('render', warmup=5):
-                self.render(*V(mx, my) * self.N)
+            with ezprof.scope('raster'):
+                self.raster()
+            with ezprof.scope('paint'):
+                self.paint()
             gui.set_image(ti.imresize(self.color, 512))
             gui.show()
 
