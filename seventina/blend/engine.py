@@ -2,6 +2,7 @@ import bpy
 
 from ..utils import *
 from ..engine import Engine
+from .cache import IDCache
 
 
 @ti.data_oriented
@@ -48,6 +49,7 @@ class BlenderEngine(Engine):
             bpy.context.scene.seventina_max_verts,
             bpy.context.scene.seventina_max_faces)
         self.output = OutputPixelConverter()
+        self.cache = IDCache()
 
         self.W2V = ti.Matrix.field(4, 4, float, ())
         self.L2W = ti.Matrix.field(4, 4, float, ())
@@ -66,7 +68,7 @@ class BlenderEngine(Engine):
         self.L2W[None] = L2W.tolist()
         self.L2V[None] = (W2V @ L2W).tolist()
 
-        verts, faces = blender_get_object_mesh(object)
+        verts, faces = self.cache.lookup(blender_get_object_mesh, object)
         self.update_mesh(verts, faces)
         self.render()
 
@@ -77,6 +79,10 @@ class BlenderEngine(Engine):
     def render_pixels(self, pixels, width, height):
         self.render_scene()
         self.output.render(self.color, pixels, width, height)
+
+    def invalidate_callback(self, update):
+        object = update.id
+        self.cache.invalidate(object)
 
     @ti.kernel
     def _update_mesh_verts(self, verts: ti.ext_arr()):
@@ -91,6 +97,10 @@ class BlenderEngine(Engine):
                 self.faces[i][k] = faces[i, k]
 
     def update_mesh(self, verts, faces):
+        assert len(verts) <= self.verts.shape[0], \
+                f'please increase max_verts to {len(verts)}'
+        assert len(faces) <= self.faces.shape[0], \
+                f'please increase max_faces to {len(faces)}'
         self._update_mesh_verts(verts)
         self._update_mesh_faces(faces)
         self.nfaces[None] = len(faces)

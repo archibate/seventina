@@ -93,6 +93,15 @@ def render_main(width, height, region3d):
     return pixels
 
 
+def invalidate_main(updates):
+    @worker.launch
+    def result(self):
+        for update in updates:
+            self.engine.invalidate_callback(update)
+
+    worker.wait_done()
+
+
 def start_main():
     @worker.launch
     def result(self):
