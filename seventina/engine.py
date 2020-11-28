@@ -46,18 +46,18 @@ class Engine:
         self.faces = ti.Vector.field(3, int, maxfaces)
         self.nfaces = ti.field(int, ())
 
-        self.pers = ti.Matrix.field(4, 4, float, ())
+        self.L2V = ti.Matrix.field(4, 4, float, ())
 
         @ti.materialize_callback
         @ti.kernel
         def _():
-            self.pers[None] = ti.Matrix.identity(float, 4)
+            self.L2V[None] = ti.Matrix.identity(float, 4)
             for i, j in self.depth:
                 self.depth[i, j] = 1e6
 
     @ti.func
-    def to_perspect(self, p):
-        return mapplies(self.pers[None], p)
+    def to_viewspace(self, p):
+        return mapplies(self.L2V[None], p)
 
     @ti.func
     def to_viewport(self, p):
@@ -69,7 +69,7 @@ class Engine:
             self.occup[i, j] = 0
         for f in ti.smart(self.get_faces_range()):
             A, B, C = self.get_face_vertices(f)
-            A, B, C = [self.to_perspect(p) for p in [A, B, C]]
+            A, B, C = [self.to_viewspace(p) for p in [A, B, C]]
             a, b, c = [self.to_viewport(p) for p in [A, B, C]]
             for pos, wei in ti.smart(self.draw_trip(a, b, c)):
                 P = int(pos)
@@ -91,7 +91,7 @@ class Engine:
                 continue
 
             A, B, C = self.get_face_vertices(f)
-            a, b, c = [self.to_viewport(self.to_perspect(p)) for p in [A, B, C]]
+            a, b, c = [self.to_viewport(self.to_viewspace(p)) for p in [A, B, C]]
             n = (b - a).cross(c - a)
             abn = (a - b) / n
             bcn = (b - c) / n
@@ -100,7 +100,7 @@ class Engine:
             w_ca = (P - c).cross(can)
             wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
 
-            wei /= V(*[mapply(self.pers[None], p, 1)[1] for p in [A, B, C]])
+            wei /= V(*[mapply(self.L2V[None], p, 1)[1] for p in [A, B, C]])
             wei /= wei.x + wei.y + wei.z
             self.color[P] = self.interpolate(wei, f)
 

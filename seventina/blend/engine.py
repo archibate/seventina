@@ -49,18 +49,33 @@ class BlenderEngine(Engine):
             bpy.context.scene.seventina_max_faces)
         self.output = OutputPixelConverter()
 
-    def update_scene(self):
-        import bpy
-        verts, faces = blender_get_object_mesh(bpy.data.objects['Cube'])
+        self.W2V = ti.Matrix.field(4, 4, float, ())
+        self.L2W = ti.Matrix.field(4, 4, float, ())
+
+    def render_scene(self):
+        self.clear()
+        for object in bpy.context.scene.objects:
+            if not object.visible_get():
+                continue
+            if object.type == 'MESH':
+                self.render_object(object)
+
+    def render_object(self, object):
+        L2W = np.array(object.matrix_world)
+        W2V = self.W2V.to_numpy()
+        self.L2W[None] = L2W.tolist()
+        self.L2V[None] = (W2V @ L2W).tolist()
+
+        verts, faces = blender_get_object_mesh(object)
         self.update_mesh(verts, faces)
+        self.render()
 
     def update_region_data(self, region3d):
-        self.pers[None] = np.array(region3d.perspective_matrix).tolist()
+        W2V = np.array(region3d.perspective_matrix)
+        self.W2V[None] = W2V.tolist()
 
     def render_pixels(self, pixels, width, height):
-        self.update_scene()
-        self.clear()
-        self.render()
+        self.render_scene()
         self.output.render(self.color, pixels, width, height)
 
     @ti.kernel
