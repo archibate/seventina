@@ -2,7 +2,7 @@ from .utils import *
 
 
 @ti.data_oriented
-class Painter:
+class Engine:
     @ti.func
     def draw_line(self, src, dst):
         dlt = dst - src
@@ -52,6 +52,8 @@ class Painter:
         @ti.kernel
         def _():
             self.pers[None] = ti.Matrix.identity(float, 4)
+            for i, j in self.depth:
+                self.depth[i, j] = 1e6
 
     @ti.func
     def to_perspect(self, p):
@@ -65,7 +67,6 @@ class Painter:
     def raster(self):
         for i, j in self.occup:
             self.occup[i, j] = 0
-            self.depth[i, j] = 1e6
         for f in ti.smart(self.get_faces_range()):
             A, B, C = self.get_face_vertices(f)
             A, B, C = [self.to_perspect(p) for p in [A, B, C]]
@@ -103,15 +104,27 @@ class Painter:
             wei /= wei.x + wei.y + wei.z
             self.color[P] = self.interpolate(wei, f)
 
+    @ti.kernel
+    def clear(self):
+        for i, j in self.depth:
+            self.color[i, j] = 0
+            self.depth[i, j] = 1e6
+
     def render(self):
-        self.color.fill(0)
         self.raster()
         self.paint()
 
+    @ti.func
+    def shade_color(self, pos, normal):
+        light_dir = V(1., 1., 1.).normalized()
+        return max(0, normal.dot(light_dir))
+
+    @ti.func
     def interpolate(self, wei, f):
         A, B, C = self.get_face_vertices(f)
         pos = wei.x * A + wei.y * B + wei.z * C
-        return pos
+        normal = (B - A).cross(C - A).normalized()
+        return self.shade_color(pos, normal)
 
     @ti.func
     def get_faces_range(self):
@@ -123,49 +136,3 @@ class Painter:
         face = self.faces[f]
         A, B, C = self.verts[face.x], self.verts[face.y], self.verts[face.z]
         return A, B, C
-
-
-class Main(Painter):
-    def __init__(self, N=(512, 512)):
-        super().__init__(N)
-
-        from .assimp import readobj
-
-        obj = readobj('assets/monkey.obj')
-        obj['v'] *= 256
-        obj['v'] += 256
-
-        self.verts = ti.Vector.field(3, float, len(obj['v']))
-        self.faces = ti.Vector.field(3, int, len(obj['f']))
-
-        import ezprof
-        with ezprof.scope('init0'):
-            self.faces.from_numpy(obj['f'])
-            self.verts.from_numpy(obj['v'])
-
-    @ti.func
-    def get_faces_range(self):
-        for i in self.faces:
-            yield i
-
-    @ti.func
-    def get_face_vertices(self, f):
-        face = self.faces[f]
-        A, B, C = self.verts[face.x], self.verts[face.y], self.verts[face.z]
-        return A, B, C
-
-    def main(self):
-        import ezprof
-        gui = ti.GUI('raster')
-        with ezprof.scope('raster0'):
-            self.raster()
-        with ezprof.scope('paint0'):
-            self.paint()
-        while gui.running and not gui.get_event(gui.ESCAPE):
-            with ezprof.scope('raster'):
-                self.raster()
-            with ezprof.scope('paint'):
-                self.paint()
-            gui.set_image(ti.imresize(self.color, 512))
-            gui.show()
-        ezprof.show()

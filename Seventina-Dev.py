@@ -71,4 +71,7 @@ def reload():
     reload_package(seventina)
     seventina.register()
 
+    import bpy
+    bpy.context.scene.frame_current = bpy.context.scene.frame_current
+
 __import__('bpy').a = reload

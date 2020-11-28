@@ -1,7 +1,7 @@
 import bpy
 import bgl
 
-from . import engine
+from . import worker, ui
 
 
 class SeventinaRenderEngine(bpy.types.RenderEngine):
@@ -36,7 +36,7 @@ class SeventinaRenderEngine(bpy.types.RenderEngine):
         # defined as a list of pixels, each pixel itself being a list of
         # R,G,B,A values.
 
-        pixels = engine.render_main(self.size_x, self.size_y)
+        pixels = worker.render_main(self.size_x, self.size_y)
         pixels = pixels.reshape(self.size_x * self.size_y, 4).tolist()
 
         # Here we write the pixel values to the RenderResult
@@ -49,7 +49,7 @@ class SeventinaRenderEngine(bpy.types.RenderEngine):
     # should be read from Blender in the same thread. Typically a render
     # thread will be started to do the work while keeping Blender responsive.
     def view_update(self, context, depsgraph):
-        print('view_update')
+        # print('view_update')
         region = context.region
         view3d = context.space_data
         scene = depsgraph.scene
@@ -89,7 +89,7 @@ class SeventinaRenderEngine(bpy.types.RenderEngine):
     # Blender will draw overlays for selection and editing on top of the
     # rendered image automatically.
     def view_draw(self, context, depsgraph):
-        print('view_draw')
+        # print('view_draw')
         region = context.region
         region3d = context.region_data
         scene = depsgraph.scene
@@ -106,7 +106,7 @@ class SeventinaRenderEngine(bpy.types.RenderEngine):
         if not self.draw_data or self.updated \
             or self.draw_data.dimensions != dimensions \
             or self.draw_data.perspective != perspective:
-            print('CustomDrawData')
+            # print('CustomDrawData')
             self.draw_data = CustomDrawData(dimensions, perspective, region3d)
             self.updated = False
 
@@ -122,7 +122,7 @@ class CustomDrawData:
         self.perspective = perspective
 
         width, height = dimensions
-        pixels = engine.render_main(width, height, region3d)
+        pixels = worker.render_main(width, height, region3d)
 
         # Generate dummy float image buffer
         pixels = bgl.Buffer(bgl.GL_FLOAT, width * height * 4, pixels)
@@ -214,8 +214,8 @@ def register():
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('SEVENTINA')
 
-    from . import engine
-    engine.register()
+    ui.register()
+    worker.register()
 
 
 def unregister():
@@ -225,5 +225,5 @@ def unregister():
         if 'SEVENTINA' in panel.COMPAT_ENGINES:
             panel.COMPAT_ENGINES.remove('SEVENTINA')
 
-    from . import engine
-    engine.unregister()
+    worker.unregister()
+    ui.unregister()
