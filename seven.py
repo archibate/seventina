@@ -1,7 +1,7 @@
 import taichi as ti
 
-def V(*xs):
-  return ti.cast(ti.Vector(xs), float)
+from utils import *
+
 
 @ti.data_oriented
 class Raster:
@@ -26,11 +26,22 @@ class Raster:
             x = src.x + kx * i
             y = src.y + ky * i
             pos = V(x, y)
-            self.img[int(pos)] = 1
+            yield pos
+
+    @ti.func
+    def draw_trip(self, a, b, c):
+        for pos in ti.smart(self.draw_line(a, c)):
+            yield pos
+        for pos in ti.smart(self.draw_line(a, b)):
+            yield pos
+        for pos in ti.smart(self.draw_line(b, c)):
+            yield pos
 
     @ti.kernel
     def render(self, mx: float, my: float):
-        self.draw_line(V(self.N // 2, self.N // 2), V(mx, my))
+        a, b, c = V(self.N-2, self.N-4), V(self.N//2, self.N//2), V(mx, my)
+        for pos in ti.smart(self.draw_trip(a, b, c)):
+            self.img[int(pos)] = 1
 
     def main(self):
         gui = ti.GUI('raster')
@@ -40,5 +51,6 @@ class Raster:
             self.render(mx * self.N, my * self.N)
             gui.set_image(ti.imresize(self.img, 512))
             gui.show()
+
 
 Raster().main()

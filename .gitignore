@@ -1,0 +1,11 @@
+/build
+__pycache__
+/.*_localrc
+/tags
+*.blend1
+*.blend
+.vscode
+/dist
+*.png
+*.jpg
+*.xcf
