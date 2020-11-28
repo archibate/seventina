@@ -7,8 +7,8 @@ from utils import *
 @ti.data_oriented
 class Rasterizer:
     def __init__(self):
-        self.N = 64
-        self.img = ti.field(float, (self.N, self.N))
+        self.N = V(64, 64)
+        self.img = ti.field(float, self.N)
 
     @ti.func
     def calc_line(self, src, dst):
@@ -36,22 +36,22 @@ class Rasterizer:
     def draw_trip(self, a, b, c):
         bot, top = ifloor(min(a, b, c)), iceil(max(a, b, c))
         ba = (b - a).normalized()
-        cb = (c - b)#.normalized()
-        ac = (a - c)#.normalized()
+        cb = (c - b).normalized()
+        ac = (a - c).normalized()
         for i, j in ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1)):
             pos = float(V(i, j))
             d_ab = (pos - a).cross(ba)
             d_bc = (pos - b).cross(cb)
             d_ca = (pos - c).cross(ac)
             dis = V(d_bc, d_ca, d_ab)
-            if all(dis > 0) or all(dis < 0):
+            if all(dis >= -0.5) or all(dis <= 0.5):
                 yield pos
 
     @ti.kernel
     def render(self, mx: float, my: float):
-        for ensure_serial in range(1):
-            a = V(self.N//4, self.N//2)
-            b = V(self.N*3//4, self.N//2)
+        for e in range(1):
+            a = V(1/4, 1/2) * self.N
+            b = V(3/4, 1/2) * self.N
             c = V(mx, my)
             for pos in ti.smart(self.draw_trip(a, b, c)):
                 self.img[int(pos)] = 1
@@ -64,11 +64,11 @@ class Rasterizer:
             self.img.fill(0)
             mx, my = gui.get_cursor_pos()
             with ezprof.scope('render', warmup=5):
-                self.render(mx * self.N, my * self.N)
+                self.render(*V(mx, my) * self.N)
             gui.set_image(ti.imresize(self.img, 512))
             gui.show()
 
 
-ti.init(print_ir=True)
+ti.init()
 Rasterizer().main()
 ezprof.show()
