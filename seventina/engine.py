@@ -36,7 +36,7 @@ class Engine:
             if all(wei >= 0):
                 yield pos, wei
 
-    def __init__(self, N, maxverts, maxfaces):
+    def __init__(self, N, maxverts, maxfaces, maxlights):
         self.N = tovector(N)
         self.occup = ti.field(int, self.N)
         self.depth = ti.field(float, self.N)
@@ -48,6 +48,9 @@ class Engine:
 
         self.L2V = ti.Matrix.field(4, 4, float, ())
         self.L2W = ti.Matrix.field(4, 4, float, ())
+
+        self.lights = ti.Vector.field(4, float, maxlights)
+        self.nlights = ti.field(int, ())
 
         @ti.materialize_callback
         @ti.kernel
@@ -121,8 +124,12 @@ class Engine:
         pos = mapply_pos(self.L2W[None], pos)
         normal = mapply_dir(self.L2W[None], normal)
 
-        light_dir = V(1., 1., 1.).normalized()
-        return max(0, normal.dot(light_dir))
+        final = V(0.0, 0.0, 0.0)
+        for l in ti.smart(self.get_lights_range()):
+            light_dir = self.lights[l].xyz
+            color = max(0, normal.dot(light_dir))
+            final += color
+        return final
 
     @ti.func
     def interpolate(self, wei, f):
@@ -141,3 +148,8 @@ class Engine:
         face = self.faces[f]
         A, B, C = self.verts[face.x], self.verts[face.y], self.verts[face.z]
         return A, B, C
+
+    @ti.func
+    def get_lights_range(self):
+        for i in range(self.nlights[None]):
+            yield i

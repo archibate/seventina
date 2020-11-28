@@ -66,6 +66,7 @@ def V34(xyz, w):
 
 
 ti.Matrix.xy = property(lambda v: V(v.x, v.y))
+ti.Matrix.xyz = property(lambda v: V(v.x, v.y, v.z))
 
 
 def totuple(x):

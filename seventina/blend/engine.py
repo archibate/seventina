@@ -47,7 +47,8 @@ class BlenderEngine(Engine):
             bpy.context.scene.seventina_resolution_x,
             bpy.context.scene.seventina_resolution_y),
             bpy.context.scene.seventina_max_verts,
-            bpy.context.scene.seventina_max_faces)
+            bpy.context.scene.seventina_max_faces,
+            bpy.context.scene.seventina_max_lights)
         self.output = OutputPixelConverter()
         self.cache = IDCache()
 
@@ -55,11 +56,37 @@ class BlenderEngine(Engine):
 
     def render_scene(self):
         self.clear()
+
+        lights = []
+        meshes = []
+
         for object in bpy.context.scene.objects:
             if not object.visible_get():
                 continue
+            if object.type == 'LIGHT':
+                lights.append(object)
             if object.type == 'MESH':
-                self.render_object(object)
+                meshes.append(object)
+
+        self.nlights[None] = len(lights)
+        for i, object in enumerate(lights):
+            self.set_light(i, object)
+
+        for object in meshes:
+            self.render_object(object)
+
+    def set_light(self, i, object):
+        color = object.data.color
+        L2W = np.array(object.matrix_world)
+
+        if object.data.type == 'SUN':
+            dir = L2W @ np.array([0, 0, 1, 0])
+        elif object.data.type == 'POINT':
+            dir = L2W @ np.array([0, 0, 0, 1])
+        else:
+            assert False, f'unsupported light type: {object.data.type}'
+
+        self.lights[i] = dir.tolist()
 
     def render_object(self, object):
         L2W = np.array(object.matrix_world)

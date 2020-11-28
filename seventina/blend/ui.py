@@ -44,6 +44,7 @@ def register():
     bpy.types.Scene.seventina_resolution_y = bpy.props.IntProperty(name='Resolution Y', min=1, soft_min=1, subtype='PIXEL', default=512)
     bpy.types.Scene.seventina_max_faces = bpy.props.IntProperty(name='Max Faces Count', min=1, soft_min=1, default=65536)
     bpy.types.Scene.seventina_max_verts = bpy.props.IntProperty(name='Max Vertices Count', min=1, soft_min=1, default=65536)
+    bpy.types.Scene.seventina_max_lights = bpy.props.IntProperty(name='Max Lights Count', min=1, soft_min=1, default=16)
     bpy.types.Scene.seventina_backend = bpy.props.EnumProperty(name='Backend', items=[(item.upper(), item, '') for item in ['CPU', 'GPU', 'CUDA', 'OpenCL', 'OpenGL', 'Metal', 'CC']])
 
     bpy.utils.register_class(SeventinaStartEngineOperator)
@@ -58,4 +59,5 @@ def unregister():
     del bpy.types.Scene.seventina_resolution_y
     del bpy.types.Scene.seventina_max_faces
     del bpy.types.Scene.seventina_max_verts
+    del bpy.types.Scene.seventina_max_lights
     del bpy.types.Scene.seventina_backend
