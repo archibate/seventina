@@ -66,9 +66,10 @@ class Rasterizer:
 
 
 class Painter(Rasterizer):
-    def __init__(self, N):
+    def __init__(self, N, interp):
         super().__init__(N)
         self.color = ti.Vector.field(3, float, self.N)
+        self.interp = interp
 
     @ti.kernel
     def paint(self):
@@ -86,23 +87,19 @@ class Painter(Rasterizer):
             w_ca = (P - c).cross(can)
             wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
 
-            clra = float(V(1, 0, 0))
-            clrb = float(V(0, 1, 0))
-            clrc = float(V(0, 0, 1))
-            color = wei.x * clra + wei.y * clrb + wei.z * clrc
-            self.color[P] = color
+            self.color[P] = self.interp(wei)
 
 
 class Main(Painter):
     def __init__(self, N=(512, 512)):
-        obj = readobj('torus.obj')
+        obj = readobj('assets/monkey.obj')
         obj['v'] *= 256
         obj['v'] += 256
 
         self.verts = ti.Vector.field(3, float, len(obj['v']))
         self.faces = ti.Vector.field(3, int, len(obj['f']))
 
-        super().__init__(N)
+        super().__init__(N, lambda wei: wei)
 
         with ezprof.scope('init0'):
             self.faces.from_numpy(obj['f'])
