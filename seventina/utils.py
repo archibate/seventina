@@ -135,6 +135,11 @@ def mapply(mat, pos, wei):
 
 
 @ti.func
-def mapplies(mat, pos):
+def mapply_pos(mat, pos):
     res, rew = mapply(mat, pos, 1)
     return res / rew
+
+@ti.func
+def mapply_dir(mat, pos):
+    res, rew = mapply(mat, pos, 0)
+    return res

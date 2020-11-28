@@ -51,8 +51,7 @@ class BlenderEngine(Engine):
         self.output = OutputPixelConverter()
         self.cache = IDCache()
 
-        self.W2V = ti.Matrix.field(4, 4, float, ())
-        self.L2W = ti.Matrix.field(4, 4, float, ())
+        self.W2V_np = None
 
     def render_scene(self):
         self.clear()
@@ -64,17 +63,15 @@ class BlenderEngine(Engine):
 
     def render_object(self, object):
         L2W = np.array(object.matrix_world)
-        W2V = self.W2V.to_numpy()
         self.L2W[None] = L2W.tolist()
-        self.L2V[None] = (W2V @ L2W).tolist()
+        self.L2V[None] = (self.W2V_np @ L2W).tolist()
 
         verts, faces = self.cache.lookup(blender_get_object_mesh, object)
         self.update_mesh(verts, faces)
         self.render()
 
     def update_region_data(self, region3d):
-        W2V = np.array(region3d.perspective_matrix)
-        self.W2V[None] = W2V.tolist()
+        self.W2V_np = np.array(region3d.perspective_matrix)
 
     def render_pixels(self, pixels, width, height):
         self.render_scene()
@@ -82,7 +79,8 @@ class BlenderEngine(Engine):
 
     def invalidate_callback(self, update):
         object = update.id
-        self.cache.invalidate(object)
+        if update.is_updated_geometry:
+            self.cache.invalidate(object)
 
     @ti.kernel
     def _update_mesh_verts(self, verts: ti.ext_arr()):

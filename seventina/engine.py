@@ -47,17 +47,19 @@ class Engine:
         self.nfaces = ti.field(int, ())
 
         self.L2V = ti.Matrix.field(4, 4, float, ())
+        self.L2W = ti.Matrix.field(4, 4, float, ())
 
         @ti.materialize_callback
         @ti.kernel
         def _():
             self.L2V[None] = ti.Matrix.identity(float, 4)
+            self.L2W[None] = ti.Matrix.identity(float, 4)
             for i, j in self.depth:
                 self.depth[i, j] = 1e6
 
     @ti.func
     def to_viewspace(self, p):
-        return mapplies(self.L2V[None], p)
+        return mapply_pos(self.L2V[None], p)
 
     @ti.func
     def to_viewport(self, p):
@@ -116,6 +118,9 @@ class Engine:
 
     @ti.func
     def shade_color(self, pos, normal):
+        pos = mapply_pos(self.L2W[None], pos)
+        normal = mapply_dir(self.L2W[None], normal)
+
         light_dir = V(1., 1., 1.).normalized()
         return max(0, normal.dot(light_dir))
 
