@@ -82,12 +82,6 @@ class Engine:
                 if ti.atomic_min(self.depth[P], depth) > depth:
                     self.occup[P] = f + 1
 
-    def get_faces_range(self):
-        raise NotImplementedError
-
-    def get_face_vertices(self, f):
-        raise NotImplementedError
-
     @ti.kernel
     def paint(self):
         for P in ti.grouped(self.occup):
@@ -126,8 +120,12 @@ class Engine:
 
         final = V(0.0, 0.0, 0.0)
         for l in ti.smart(self.get_lights_range()):
-            light_dir = self.lights[l].xyz
-            color = max(0, normal.dot(light_dir))
+            light, lcolor, lfacs = self.get_light_vector(l)
+            light_dir = light.xyz - pos * light.w
+            light_dist = light_dir.norm()
+            lcolor *= lfacs.x + lfacs.y / light_dist + lfacs.z / light_dist**2
+            light_dir /= light_dist
+            color = lcolor * max(0, normal.dot(light_dir))
             final += color
         return final
 
@@ -153,3 +151,7 @@ class Engine:
     def get_lights_range(self):
         for i in range(self.nlights[None]):
             yield i
+
+    @ti.func
+    def get_light_vector(self, l):
+        return self.lights[l], V(1.0, 1.0, 1.0), V(0.0, 0.0, 1.0)
