@@ -14,8 +14,6 @@ class TaichiWorkerMT:
         self.t.daemon = True
         self.t.start()
 
-        self.scene = None
-
     def stop(self):
         print('Stopping worker')
         try:
@@ -75,9 +73,8 @@ def init_scene():
     import taichi as ti
     ti.init()
 
-    from .. import Scene
-    scene = Scene()
-    return scene
+    from ..scene import BlenderScene
+    return BlenderScene()
 
 
 def render_main(width, height, region3d):
@@ -85,7 +82,7 @@ def render_main(width, height, region3d):
 
     @worker.launch
     def result(self):
-        if self.scene is None:
+        if not hasattr(self, 'scene'):
             self.scene = init_scene()
 
         self.scene.render(pixels, width, height)

@@ -12,7 +12,7 @@ bl_info = {
 }
 
 
-dev_mode = False
+registered = False
 
 
 def register():

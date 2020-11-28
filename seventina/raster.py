@@ -1,8 +1,4 @@
-import taichi as ti
-import ezprof
-
-from utils import *
-from assimp import readobj, objorient
+from .utils import *
 
 
 @ti.data_oriented
@@ -50,7 +46,7 @@ class Rasterizer:
         for i, j in self.occup:
             self.occup[i, j] = 0
             self.depth[i, j] = 1e6
-        for f in range(self.get_num_faces()):
+        for f in ti.smart(self.get_faces_range()):
             A, B, C = self.get_face_vertices(f)
             for pos, wei in ti.smart(self.draw_trip(A.xy, B.xy, C.xy)):
                 P = int(pos)
@@ -58,7 +54,7 @@ class Rasterizer:
                 if ti.atomic_min(self.depth[P], depth) > depth:
                     self.occup[P] = f + 1
 
-    def get_num_faces(self):
+    def get_faces_range(self):
         raise NotImplementedError
 
     def get_face_vertices(self, f):
@@ -66,10 +62,9 @@ class Rasterizer:
 
 
 class Painter(Rasterizer):
-    def __init__(self, N, interp):
+    def __init__(self, N):
         super().__init__(N)
         self.color = ti.Vector.field(3, float, self.N)
-        self.interp = interp
 
     @ti.kernel
     def paint(self):
@@ -89,9 +84,41 @@ class Painter(Rasterizer):
 
             self.color[P] = self.interp(wei)
 
+    def interp(self):
+        raise NotImplementedError
+
+
+class DynamicPainter(Painter):
+    def __init__(self, N, maxverts, maxfaces):
+        super().__init__(N)
+
+        self.maxverts, self.maxfaces = maxverts, maxfaces
+        self.verts = ti.Vector.field(3, float, self.maxverts)
+        self.faces = ti.Vector.field(3, int, self.maxfaces)
+        self.nfaces = ti.field(int, ())
+
+    @ti.func
+    def interp(self, wei):
+        return wei
+
+    @ti.func
+    def get_faces_range(self):
+        for i in range(self.nfaces[None]):
+            yield i
+
+    @ti.func
+    def get_face_vertices(self, f):
+        face = self.faces[f]
+        A, B, C = self.verts[face.x], self.verts[face.y], self.verts[face.z]
+        return A, B, C
+
 
 class Main(Painter):
     def __init__(self, N=(512, 512)):
+        super().__init__(N)
+
+        from .assimp import readobj
+
         obj = readobj('assets/monkey.obj')
         obj['v'] *= 256
         obj['v'] += 256
@@ -99,15 +126,19 @@ class Main(Painter):
         self.verts = ti.Vector.field(3, float, len(obj['v']))
         self.faces = ti.Vector.field(3, int, len(obj['f']))
 
-        super().__init__(N, lambda wei: wei)
-
+        import ezprof
         with ezprof.scope('init0'):
             self.faces.from_numpy(obj['f'])
             self.verts.from_numpy(obj['v'])
 
     @ti.func
-    def get_num_faces(self):
-        return self.faces.shape[0]
+    def interp(self, wei):
+        return wei
+
+    @ti.func
+    def get_faces_range(self):
+        for i in self.faces:
+            yield i
 
     @ti.func
     def get_face_vertices(self, f):
@@ -116,6 +147,7 @@ class Main(Painter):
         return A, B, C
 
     def main(self):
+        import ezprof
         gui = ti.GUI('raster')
         with ezprof.scope('raster0'):
             self.raster()
@@ -128,8 +160,4 @@ class Main(Painter):
                 self.paint()
             gui.set_image(ti.imresize(self.color, 512))
             gui.show()
-
-
-ti.init()
-Main().main()
-ezprof.show()
+        ezprof.show()

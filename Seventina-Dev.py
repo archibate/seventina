@@ -13,18 +13,50 @@ bl_info = {
 }
 
 
-src_path = '/home/bate/Develop/seven/seventina/__init__.py'
+import sys
+sys.path.insert(0, '/home/bate/Develop/seven')
+
+
+# https://stackoverflow.com/questions/28101895/reloading-packages-and-their-submodules-recursively-in-python
+def reload_package(package):
+    import os
+    import types
+    import importlib
+
+    assert(hasattr(package, "__package__"))
+    fn = package.__file__
+    fn_dir = os.path.dirname(fn) + os.sep
+    module_visit = {fn}
+    del fn
+
+    def reload_recursive_ex(module):
+        importlib.reload(module)
+
+        for module_child in vars(module).values():
+            if isinstance(module_child, types.ModuleType):
+                fn_child = getattr(module_child, "__file__", None)
+                if (fn_child is not None) and fn_child.startswith(fn_dir):
+                    if fn_child not in module_visit:
+                        # print("reloading:", fn_child, "from", module)
+                        module_visit.add(fn_child)
+                        reload_recursive_ex(module_child)
+
+    reload_recursive_ex(package)
 
 
 def register():
-    import imp
-    global seventina
-    seventina = imp.load_source('seventina', src_path)
-    seventina.dev_mode = True
+    import seventina
+    assert seventina.__spec__ is not None
     seventina.register()
 
 
 def unregister():
-    global seventina
+    import seventina
     seventina.unregister()
-    seventina = None
+
+
+def reload():
+    import seventina
+    seventina.unregister()
+    reload_package(seventina)
+    seventina.register()
