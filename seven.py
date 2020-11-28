@@ -5,34 +5,28 @@ from utils import *
 
 
 @ti.data_oriented
-class RasterizerMethods:
-    def __init__(self, N):
-        self.N = tovector(N)
-
+class Rasterizer:
+    @staticmethod
     @ti.func
-    def calc_line(self, src, dst):
+    def draw_line(src, dst):
         dlt = dst - src
         adlt = abs(dlt)
-        kx, ky, siz = 1.0, 1.0, 0.0
+        k, siz = V(1.0, 1.0), 0
         if adlt.x >= adlt.y:
-            kx = 1.0 if dlt.x >= 0 else -1.0
-            ky = kx * dlt.y / dlt.x
-            siz = adlt.x
+            k.x = 1.0 if dlt.x >= 0 else -1.0
+            k.y = k.x * dlt.y / dlt.x
+            siz = int(adlt.x)
         else:
-            ky = 1.0 if dlt.y >= 0 else -1.0
-            kx = ky * dlt.x / dlt.y
-            siz = adlt.y
-        return V(kx, ky), int(siz)
-
-    @ti.func
-    def draw_line(self, src, dst):
-        kel, siz = self.calc_line(src, dst)
+            k.y = 1.0 if dlt.y >= 0 else -1.0
+            k.x = k.y * dlt.x / dlt.y
+            siz = int(adlt.y)
         for i in range(siz + 1):
-            pos = src + kel * i
-            yield pos
+            pos = src + k * i
+            yield pos, i / siz
 
+    @staticmethod
     @ti.func
-    def draw_trip(self, a, b, c):
+    def draw_trip(a, b, c):
         bot, top = ifloor(min(a, b, c)), iceil(max(a, b, c))
         n = abs((b - a).cross(c - a))
         abn = (a - b) / n
@@ -53,10 +47,8 @@ class RasterizerMethods:
                 wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
                 yield pos, wei
 
-
-class Rasterizer(RasterizerMethods):
     def __init__(self, N, verts, faces):
-        super().__init__(N)
+        self.N = tovector(N)
         self.verts = verts
         self.faces = faces
         self.occup = ti.field(int, self.N)
@@ -77,7 +69,7 @@ class Rasterizer(RasterizerMethods):
                     self.occup[P] = f + 1
 
 
-class RasterizerPaint(Rasterizer):
+class Painter(Rasterizer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.color = ti.Vector.field(3, float, self.N)
@@ -106,7 +98,7 @@ class RasterizerPaint(Rasterizer):
             self.color[P] = color
 
 
-class RasterizerMain(RasterizerPaint):
+class Main(Painter):
     def __init__(self, N=(512, 512)):
         verts = ti.Vector.field(3, float, 6)
         faces = ti.Vector.field(3, int, 2)
@@ -137,5 +129,5 @@ class RasterizerMain(RasterizerPaint):
 
 
 ti.init()
-RasterizerMain().main()
+Main().main()
 ezprof.show()
