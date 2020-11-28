@@ -3,9 +3,6 @@ import queue
 import threading
 import traceback
 import numpy as np
-import time
-
-from ..node_system.nodes import utils
 
 
 class TaichiWorkerMT:
@@ -17,15 +14,14 @@ class TaichiWorkerMT:
         self.t.daemon = True
         self.t.start()
 
-        self.table = None
-        self.output = None
+        self.scene = None
 
     def stop(self):
         print('Stopping worker')
         try:
             if self.running:
                 self.running = False
-                self.q.put((lambda self: None, [None, None]), block=False)
+                self.q.put((lambda self: None, [None]), block=False)
         except Exception as e:
             print(e)
 
@@ -75,12 +71,11 @@ class TaichiWorker:
         pass
 
 
-def init_main():
+def init_scene():
     import taichi as ti
-    backend = bpy.context.scene.taichi_use_backend.lower()
-    ti.init(arch=getattr(ti, backend))
+    ti.init()
 
-    from seventina import Scene
+    from .. import Scene
     scene = Scene()
     return scene
 
@@ -91,25 +86,12 @@ def render_main(width, height, region3d):
     @worker.launch
     def result(self):
         if self.scene is None:
-            self.scene = init_main()
+            self.scene = init_scene()
 
         self.scene.render(pixels, width, height)
 
     worker.wait_done()
-
     return pixels
-
-
-@bpy.app.handlers.persistent
-def frame_update_callback(*args):
-    if worker is None or worker.output is None:
-        return
-
-    @worker.launch
-    def result(self):
-        self.output.update.run()
-
-    worker.wait_done()
 
 
 worker = None
@@ -118,9 +100,7 @@ worker = None
 def register():
     global worker
     worker = TaichiWorker()
-    bpy.app.handlers.frame_change_pre.append(frame_update_callback)
 
 
 def unregister():
-    bpy.app.handlers.frame_change_pre.remove(frame_update_callback)
     worker.stop()

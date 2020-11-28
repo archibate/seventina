@@ -1,6 +1,6 @@
 bl_info = {
         'name': 'Seventina',
-        'description': 'A soft-renderer based on Taichi programming langurage',
+        'description': 'A soft-renderer based on Taichi programming language',
         'author': 'archibate <1931127624@qq.com>',
         'version': (0, 0, 0),
         'blender': (2, 81, 0),
@@ -8,15 +8,18 @@ bl_info = {
         'support': 'COMMUNITY',
         'wiki_url': 'https://github.com/archibate/seventina/wiki',
         'tracker_url': 'https://github.com/archibate/seventina/issues',
-        'category': 'Physics',
+        'category': 'Render',
 }
 
 
+dev_mode = False
+
+
 def register():
-    from .blend import register
-    register()
+    from . import blend
+    blend.register()
 
 
 def unregister():
-    from .blend import unregister
-    unregister()
+    from . import blend
+    blend.unregister()

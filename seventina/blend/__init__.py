@@ -214,6 +214,9 @@ def register():
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('SEVENTINA')
 
+    from . import engine
+    engine.register()
+
 
 def unregister():
     bpy.utils.unregister_class(SeventinaRenderEngine)
@@ -221,3 +224,6 @@ def unregister():
     for panel in get_panels():
         if 'SEVENTINA' in panel.COMPAT_ENGINES:
             panel.COMPAT_ENGINES.remove('SEVENTINA')
+
+    from . import engine
+    engine.unregister()
