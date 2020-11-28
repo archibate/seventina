@@ -14,6 +14,9 @@ def V(*xs):
     return ti.Vector(xs)
 
 
+ti.Matrix.xy = property(lambda v: V(v.x, v.y))
+
+
 def totuple(x):
     if x is None:
         x = []
