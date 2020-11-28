@@ -48,6 +48,16 @@ def clamp(x, xmin, xmax):
 
 
 @ti.func
+def ifloor(x):
+    return int(ti.floor(x))
+
+
+@ti.func
+def iceil(x):
+    return int(ti.ceil(x))
+
+
+@ti.func
 def bilerp(f: ti.template(), pos):
     p = float(pos)
     I = int(ti.floor(p))
