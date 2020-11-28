@@ -2,13 +2,13 @@ import taichi as ti
 import ezprof
 
 from utils import *
+from assimp import readobj, objorient
 
 
 @ti.data_oriented
 class Rasterizer:
-    @staticmethod
     @ti.func
-    def draw_line(src, dst):
+    def draw_line(self, src, dst):
         dlt = dst - src
         adlt = abs(dlt)
         k, siz = V(1.0, 1.0), 0
@@ -24,33 +24,24 @@ class Rasterizer:
             pos = src + k * i
             yield pos, i / siz
 
-    @staticmethod
     @ti.func
-    def draw_trip(a, b, c):
+    def draw_trip(self, a, b, c):
         bot, top = ifloor(min(a, b, c)), iceil(max(a, b, c))
-        n = abs((b - a).cross(c - a))
+        bot, top = max(bot, 0), min(top, self.N - 1)
+        n = (b - a).cross(c - a)
         abn = (a - b) / n
         bcn = (b - c) / n
         can = (c - a) / n
-        ab = (a - b).normalized()
-        bc = (b - c).normalized()
-        ca = (c - a).normalized()
         for i, j in ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1)):
             pos = float(V(i, j))
-            d_ab = (pos - a).cross(ab)
-            d_bc = (pos - b).cross(bc)
-            d_ca = (pos - c).cross(ca)
-            dis = V(d_bc, d_ca, d_ab)
-            if all(dis >= -0.5) or all(dis <= 0.5):
-                w_bc = (pos - b).cross(bcn)
-                w_ca = (pos - c).cross(can)
-                wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
+            w_bc = (pos - b).cross(bcn)
+            w_ca = (pos - c).cross(can)
+            wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
+            if all(wei >= 0):
                 yield pos, wei
 
-    def __init__(self, N, verts, faces):
+    def __init__(self, N):
         self.N = tovector(N)
-        self.verts = verts
-        self.faces = faces
         self.occup = ti.field(int, self.N)
         self.depth = ti.field(float, self.N)
 
@@ -59,19 +50,24 @@ class Rasterizer:
         for i, j in self.occup:
             self.occup[i, j] = 0
             self.depth[i, j] = 1e6
-        for f in self.faces:
-            face = self.faces[f]
-            A, B, C = self.verts[face.x], self.verts[face.y], self.verts[face.z]
+        for f in range(self.get_num_faces()):
+            A, B, C = self.get_face_vertices(f)
             for pos, wei in ti.smart(self.draw_trip(A.xy, B.xy, C.xy)):
                 P = int(pos)
                 depth = wei.x * A.z + wei.y * B.z + wei.z * C.z
-                if ti.atomic_min(self.depth[P], depth) >= depth:
+                if ti.atomic_min(self.depth[P], depth) > depth:
                     self.occup[P] = f + 1
+
+    def get_num_faces(self):
+        raise NotImplementedError
+
+    def get_face_vertices(self, f):
+        raise NotImplementedError
 
 
 class Painter(Rasterizer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, N):
+        super().__init__(N)
         self.color = ti.Vector.field(3, float, self.N)
 
     @ti.kernel
@@ -80,10 +76,9 @@ class Painter(Rasterizer):
             f = self.occup[P] - 1
             if f == -1:
                 continue
-            face = self.faces[f]
-            A, B, C = self.verts[face.x], self.verts[face.y], self.verts[face.z]
+            A, B, C = self.get_face_vertices(f)
             a, b, c = A.xy, B.xy, C.xy
-            n = abs((b - a).cross(c - a))
+            n = (b - a).cross(c - a)
             abn = (a - b) / n
             bcn = (b - c) / n
             can = (c - a) / n
@@ -100,18 +95,28 @@ class Painter(Rasterizer):
 
 class Main(Painter):
     def __init__(self, N=(512, 512)):
-        verts = ti.Vector.field(3, float, 6)
-        faces = ti.Vector.field(3, int, 2)
-        super().__init__(N, verts, faces)
+        obj = readobj('torus.obj')
+        obj['v'] *= 256
+        obj['v'] += 256
+
+        self.verts = ti.Vector.field(3, float, len(obj['v']))
+        self.faces = ti.Vector.field(3, int, len(obj['f']))
+
+        super().__init__(N)
 
         with ezprof.scope('init0'):
-            faces.from_numpy(np.array([
-                (0, 1, 2), (3, 4, 5),
-                ], dtype=np.int32))
-            verts.from_numpy(np.array([
-                (0, 0, 128), (512, 0, 128), (256, 512, 128),
-                (256, 0, 0), (512, 512, 128), (0, 512, 256),
-                ], dtype=np.float32))
+            self.faces.from_numpy(obj['f'])
+            self.verts.from_numpy(obj['v'])
+
+    @ti.func
+    def get_num_faces(self):
+        return self.faces.shape[0]
+
+    @ti.func
+    def get_face_vertices(self, f):
+        face = self.faces[f]
+        A, B, C = self.verts[face.x], self.verts[face.y], self.verts[face.z]
+        return A, B, C
 
     def main(self):
         gui = ti.GUI('raster')
