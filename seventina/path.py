@@ -64,45 +64,25 @@ class BRDF:
             for k, v in kwargs.items():
                 getattr(self, k)[None] = v
 
-    def brdf(self, idir, odir, nrm):
+    def brdf(self, idir, odir):
         raise NotImplementedError
 
     @ti.func
-    def mapping(self, t, s):
-        return t, s
+    def rand_odir(self, idir):
+        return spherical(ti.random(), ti.random())
+
+    @ti.func
+    def mapfactor(self, idir, odir):
+        return 1
 
     @ti.func
     def bounce(self, dir, nrm):
-        t, s = self.mapping(ti.random(), ti.random())
-        odir = spherical(t, s)
         axes = tangentspace(nrm)
         idir = axes.transpose() @ -dir
-        fac = self.brdf(idir, odir)
-        return axes @ odir, fac
-
-
-class DiffuseBRDF(BRDF):
-    def __init__(self, **kwargs):
-        self.color = ti.Vector.field(3, float, ())
-
-        super().__init__(**kwargs)
-
-    @ti.func
-    def brdf(self, idir, odir):
-        return 1.
-
-
-class BlinnPhongBRDF(BRDF):
-    def __init__(self, **kwargs):
-        self.shineness = ti.field(float, ())
-
-        super().__init__(**kwargs)
-
-    @ti.func
-    def brdf(self, idir, odir):
-        shineness = self.shineness[None]
-        half = (odir + idir).normalized()
-        return (shineness + 8) / 8 * pow(max(0, half.z), shineness)
+        odir = self.rand_odir(idir)
+        clr = self.brdf(idir, odir)
+        clr *= self.mapfactor(idir, odir)
+        return axes @ odir, clr
 
 
 class CookTorranceBRDF(BRDF):
@@ -142,18 +122,59 @@ class CookTorranceBRDF(BRDF):
         return kd * basecolor + ks * fdf * vdf * ndf / ti.pi
 
 
+class DiffuseBRDF(BRDF):
+    def __init__(self, **kwargs):
+        self.color = ti.Vector.field(3, float, ())
+
+        super().__init__(**kwargs)
+
+    @ti.func
+    def brdf(self, idir, odir):
+        return self.color[None]
+
+
+class SpecularBRDF(BRDF):
+    def __init__(self, **kwargs):
+        self.color = ti.Vector.field(3, float, ())
+
+        super().__init__(**kwargs)
+
+    @ti.func
+    def rand_odir(self, idir):
+        odir = reflect(-idir, V(0., 0., 1.))
+        return odir
+
+    @ti.func
+    def brdf(self, idir, odir):
+        return self.color[None]
+
+
+class BlinnPhongBRDF(BRDF):
+    def __init__(self, **kwargs):
+        self.shineness = ti.field(float, ())
+
+        super().__init__(**kwargs)
+
+    @ti.func
+    def brdf(self, idir, odir):
+        shineness = self.shineness[None]
+        half = (odir + idir).normalized()
+        return (shineness + 8) / 8 * pow(max(0, half.z), shineness)
+
+
 mat_diffuse = CookTorranceBRDF(roughness=0.8,
         basecolor=(1, 1, 1),
-        metallic=0.1,
+        metallic=0.0,
         specular=0.5)
 mat_glossy = CookTorranceBRDF(roughness=0.1,
         basecolor=(1, 1, 1),
         metallic=0.9,
         specular=0.5)
-mat_ground = CookTorranceBRDF(roughness=0.3,
+mat_ground = CookTorranceBRDF(roughness=0.4,
         basecolor=(1, 0, 0),
-        metallic=0.1,
+        metallic=0.0,
         specular=1.0)
+#mat_glossy = SpecularBRDF(color=(1, 1, 1))
 
 
 @ti.data_oriented
