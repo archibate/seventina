@@ -1,4 +1,5 @@
 from utils import *
+import ezprof
 
 
 EPS = 1e-6
@@ -75,9 +76,13 @@ class PathEngine:
     @ti.func
     def bounce_ray(self, org, dir, i_pos, i_nrm):
         org = i_pos + i_nrm * EPS
-        dir = reflect(dir, i_nrm)
-        #dir *= 0
-        return V(1., 1., 1.), org, dir
+        color = V(1., 1., 1.)
+        if ti.random() > 0.3:
+            dir = reflect(dir, i_nrm)
+        else:
+            color = V(1., 1., 1.)
+            dir *= 0
+        return color, org, dir
 
     @ti.kernel
     def step_rays(self):
@@ -109,11 +114,14 @@ class PathEngine:
                 self.count[I] += 1
 
     def main(self):
-        self.generate_rays()
-        self.step_rays()
-        self.step_rays()
-        self.update_screen()
+        for i in range(4):
+            with ezprof.scope('step'):
+                self.generate_rays()
+                for j in range(5):
+                    self.step_rays()
+                self.update_screen()
+        ezprof.show()
         ti.imshow(ti.imresize(self.screen, 512))
 
-
+ti.init(ti.cpu)
 PathEngine().main()
