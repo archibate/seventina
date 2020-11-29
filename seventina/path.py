@@ -1,5 +1,6 @@
 from utils import *
 import ezprof
+ti.init(ti.gpu)
 
 
 EPS = 1e-6
@@ -33,33 +34,127 @@ def union_intersect(ret1, ret2):
 
 
 @ti.func
-def randu2():
-    a = ti.random() * ti.tau
-    return V(ti.cos(a), ti.sin(a))
+def spherical(theta, sin_phi):
+    unit = V(ti.cos(theta * ti.tau), ti.sin(theta * ti.tau))
+    cos_phi = ti.sqrt(1 - sin_phi**2)
+    dir = V23(cos_phi * unit, sin_phi)
+    return dir
 
 
 @ti.func
-def randuu3():
-    u = randu2()
-    s = ti.random()
-    c = ti.sqrt(1 - s**2)
-    return V23(c * u, s)
+def unspherical(dir):
+    theta = ti.atan2(dir.y, dir.x) / ti.tau
+    sin_phi = dir.z
+    return theta, sin_phi
+
+
+@ti.func
+def tanspace(nrm):
+    up = V(0., 1., 0.)
+    bitan = nrm.cross(up).normalized()
+    tan = bitan.cross(nrm)
+    return ti.Matrix.cols([tan, bitan, nrm])
+
+
+@ti.func
+def untanspace(nrm):
+    return tanspace(nrm).transpose()
 
 
 @ti.func
 def diffuse_reflect(dir, nrm):
-    up = V(0., 1., 0.)
-    bitan = nrm.cross(up).normalized()
-    tan = bitan.cross(nrm)
-
-    ndir = randuu3()
-    ndir = ndir.x * tan + ndir.y * bitan + ndir.z * nrm
+    ndir = tanspace(nrm) @ spherical(ti.random(), ti.random())
     return ndir
 
 
 @ti.func
 def specular_reflect(dir, nrm):
-    return reflect(dir, nrm)
+    ndir = reflect(dir, nrm)
+    return ndir
+
+
+@ti.data_oriented
+class BRDF:
+    def __init__(self, **kwargs):
+        @ti.materialize_callback
+        def _():
+            for k, v in kwargs.items():
+                getattr(self, k)[None] = v
+
+    def brdf(self, idir, odir, nrm):
+        raise NotImplementedError
+
+    @ti.func
+    def bounce(self, dir, nrm):
+        odir = tanspace(nrm) @ spherical(ti.random(), ti.random())
+        fac = self.brdf(-dir, odir, nrm)
+        return odir, fac
+
+
+class DiffuseBRDF(BRDF):
+    def __init__(self, **kwargs):
+        self.color = ti.Vector.field(3, float, ())
+
+        super().__init__(**kwargs)
+
+    @ti.func
+    def brdf(self, idir, odir, nrm):
+        return 1.
+
+
+class BlinnPhongBRDF(BRDF):
+    def __init__(self, **kwargs):
+        self.shineness = ti.field(float, ())
+
+        super().__init__(**kwargs)
+
+    @ti.func
+    def brdf(self, idir, odir, nrm):
+        shineness = self.shineness[None]
+        half = (odir + idir).normalized()
+        NoH = max(0, nrm.dot(half))
+        return (shineness + 8) / 8 * pow(NoH, shineness)
+
+
+class CookTorranceBRDF(BRDF):
+    def __init__(self, **kwargs):
+        self.roughness = ti.field(float, ())
+        self.metallic = ti.field(float, ())
+        self.specular = ti.field(float, ())
+        self.basecolor = ti.Vector.field(3, float, ())
+
+        super().__init__(**kwargs)
+
+    @ti.func
+    def ischlick(self, cost):
+        k = (self.roughness[None] + 1)**2 / 8
+        return k + (1 - k) * cost
+
+    @ti.func
+    def fresnel(self, f0, HoV):
+        return f0 + (1 - f0) * (1 - HoV)**5
+
+    @ti.func
+    def brdf(self, idir, odir, nrm):
+        roughness = self.roughness[None]
+        metallic = self.metallic[None]
+        specular = self.specular[None]
+        basecolor = self.basecolor[None]
+        half = (idir + odir).normalized()
+        NoH = max(EPS, nrm.dot(half))
+        NoL = max(EPS, nrm.dot(idir))
+        NoV = max(EPS, nrm.dot(odir))
+        HoV = min(1 - EPS, max(EPS, half.dot(odir)))
+        ndf = roughness**2 / (NoH**2 * (roughness**2 - 1) + 1)**2
+        vdf = 0.25 / (self.ischlick(NoL) * self.ischlick(NoV))
+        f0 = metallic * basecolor + (1 - metallic) * 0.16 * specular**2
+        ks, kd = f0, (1 - f0) * (1 - self.metallic)
+        fdf = self.fresnel(f0, NoV)
+        return kd * basecolor + ks * fdf * vdf * ndf / ti.pi
+
+
+mat_diffuse = DiffuseBRDF(color=(1, 1, 1))
+mat_glossy = BlinnPhongBRDF(shineness=10)
 
 
 @ti.data_oriented
@@ -111,13 +206,16 @@ class PathEngine:
             dir *= 0
         elif i_id == 2:
             color = V(1., 1., 1.)
-            dir = diffuse_reflect(dir, i_nrm)
+            dir, fac = mat_diffuse.bounce(dir, i_nrm)
+            color *= fac
         elif i_id == 3:
             color = V(1., 0., 0.)
-            dir = diffuse_reflect(dir, i_nrm)
+            dir, fac = mat_diffuse.bounce(dir, i_nrm)
+            color *= fac
         elif i_id == 4:
             color = V(1., 1., 1.)
-            dir = specular_reflect(dir, i_nrm)
+            dir, fac = mat_glossy.bounce(dir, i_nrm)
+            color *= fac
         return color, org, dir
 
     @ti.kernel
@@ -150,7 +248,7 @@ class PathEngine:
                 self.count[I] += 1
 
     def main(self):
-        for i in range(2048):
+        for i in range(1024):
             with ezprof.scope('step'):
                 self.generate_rays()
                 for j in range(5):
@@ -159,5 +257,4 @@ class PathEngine:
         ezprof.show()
         ti.imshow(aces_tonemap(ti.imresize(self.screen, 512)))
 
-ti.init(ti.gpu)
 PathEngine().main()
