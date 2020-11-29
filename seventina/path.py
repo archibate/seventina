@@ -57,6 +57,11 @@ def diffuse_reflect(dir, nrm):
     return ndir
 
 
+@ti.func
+def specular_reflect(dir, nrm):
+    return reflect(dir, nrm)
+
+
 @ti.data_oriented
 class PathEngine:
     def __init__(self, res=(512, 512)):
@@ -90,10 +95,11 @@ class PathEngine:
 
     @ti.func
     def intersect(self, org, dir):
-        ret1 = sphere_intersect(1, V(-.5, 0., 0.), 0.35, org, dir)
-        ret2 = sphere_intersect(2, V(+.5, 0., 0.), 0.35, org, dir)
+        ret1 = sphere_intersect(1, V(-.5, 0., 0.), .4, org, dir)
+        ret2 = sphere_intersect(2, V(+.5, 0., 0.), .4, org, dir)
         ret3 = sphere_intersect(3, V(0, -1e2-.5, 0.), 1e2, org, dir)
-        ret = union_intersect(ret1, union_intersect(ret2, ret3))
+        ret4 = sphere_intersect(4, V(0., -.35, -.25), .15, org, dir)
+        ret = union_intersect(ret1, union_intersect(ret2, union_intersect(ret3, ret4)))
         return ret
 
     @ti.func
@@ -101,7 +107,7 @@ class PathEngine:
         org = i_pos + i_nrm * EPS
         color = V(0., 0., 0.)
         if i_id == 1:
-            color = V(2., 2., 2.)
+            color = V(4., 4., 4.)
             dir *= 0
         elif i_id == 2:
             color = V(1., 1., 1.)
@@ -109,6 +115,9 @@ class PathEngine:
         elif i_id == 3:
             color = V(1., 0., 0.)
             dir = diffuse_reflect(dir, i_nrm)
+        elif i_id == 4:
+            color = V(1., 1., 1.)
+            dir = specular_reflect(dir, i_nrm)
         return color, org, dir
 
     @ti.kernel
@@ -141,10 +150,10 @@ class PathEngine:
                 self.count[I] += 1
 
     def main(self):
-        for i in range(512):
+        for i in range(2048):
             with ezprof.scope('step'):
                 self.generate_rays()
-                for j in range(4):
+                for j in range(5):
                     self.step_rays()
                 self.update_screen()
         ezprof.show()
