@@ -49,28 +49,11 @@ def unspherical(dir):
 
 
 @ti.func
-def tanspace(nrm):
+def tangentspace(nrm):
     up = V(0., 1., 0.)
     bitan = nrm.cross(up).normalized()
     tan = bitan.cross(nrm)
     return ti.Matrix.cols([tan, bitan, nrm])
-
-
-@ti.func
-def untanspace(nrm):
-    return tanspace(nrm).transpose()
-
-
-@ti.func
-def diffuse_reflect(dir, nrm):
-    ndir = tanspace(nrm) @ spherical(ti.random(), ti.random())
-    return ndir
-
-
-@ti.func
-def specular_reflect(dir, nrm):
-    ndir = reflect(dir, nrm)
-    return ndir
 
 
 @ti.data_oriented
@@ -85,10 +68,17 @@ class BRDF:
         raise NotImplementedError
 
     @ti.func
+    def mapping(self, t, s):
+        return t, s
+
+    @ti.func
     def bounce(self, dir, nrm):
-        odir = tanspace(nrm) @ spherical(ti.random(), ti.random())
-        fac = self.brdf(-dir, odir, nrm)
-        return odir, fac
+        t, s = self.mapping(ti.random(), ti.random())
+        odir = spherical(t, s)
+        axes = tangentspace(nrm)
+        idir = axes.transpose() @ -dir
+        fac = self.brdf(idir, odir)
+        return axes @ odir, fac
 
 
 class DiffuseBRDF(BRDF):
@@ -98,7 +88,7 @@ class DiffuseBRDF(BRDF):
         super().__init__(**kwargs)
 
     @ti.func
-    def brdf(self, idir, odir, nrm):
+    def brdf(self, idir, odir):
         return 1.
 
 
@@ -109,11 +99,10 @@ class BlinnPhongBRDF(BRDF):
         super().__init__(**kwargs)
 
     @ti.func
-    def brdf(self, idir, odir, nrm):
+    def brdf(self, idir, odir):
         shineness = self.shineness[None]
         half = (odir + idir).normalized()
-        NoH = max(0, nrm.dot(half))
-        return (shineness + 8) / 8 * pow(NoH, shineness)
+        return (shineness + 8) / 8 * pow(max(0, half.z), shineness)
 
 
 class CookTorranceBRDF(BRDF):
@@ -135,15 +124,15 @@ class CookTorranceBRDF(BRDF):
         return f0 + (1 - f0) * (1 - HoV)**5
 
     @ti.func
-    def brdf(self, idir, odir, nrm):
+    def brdf(self, idir, odir):
         roughness = self.roughness[None]
         metallic = self.metallic[None]
         specular = self.specular[None]
         basecolor = self.basecolor[None]
         half = (idir + odir).normalized()
-        NoH = max(EPS, nrm.dot(half))
-        NoL = max(EPS, nrm.dot(idir))
-        NoV = max(EPS, nrm.dot(odir))
+        NoH = max(EPS, half.z)
+        NoL = max(EPS, idir.z)
+        NoV = max(EPS, odir.z)
         HoV = min(1 - EPS, max(EPS, half.dot(odir)))
         ndf = roughness**2 / (NoH**2 * (roughness**2 - 1) + 1)**2
         vdf = 0.25 / (self.ischlick(NoL) * self.ischlick(NoV))
@@ -153,8 +142,18 @@ class CookTorranceBRDF(BRDF):
         return kd * basecolor + ks * fdf * vdf * ndf / ti.pi
 
 
-mat_diffuse = DiffuseBRDF(color=(1, 1, 1))
-mat_glossy = BlinnPhongBRDF(shineness=10)
+mat_diffuse = CookTorranceBRDF(roughness=0.8,
+        basecolor=(1, 1, 1),
+        metallic=0.1,
+        specular=0.5)
+mat_glossy = CookTorranceBRDF(roughness=0.1,
+        basecolor=(1, 1, 1),
+        metallic=0.9,
+        specular=0.5)
+mat_ground = CookTorranceBRDF(roughness=0.3,
+        basecolor=(1, 0, 0),
+        metallic=0.1,
+        specular=1.0)
 
 
 @ti.data_oriented
@@ -202,20 +201,14 @@ class PathEngine:
         org = i_pos + i_nrm * EPS
         color = V(0., 0., 0.)
         if i_id == 1:
-            color = V(4., 4., 4.)
             dir *= 0
+            color = V(4., 4., 4.)
         elif i_id == 2:
-            color = V(1., 1., 1.)
-            dir, fac = mat_diffuse.bounce(dir, i_nrm)
-            color *= fac
+            dir, color = mat_diffuse.bounce(dir, i_nrm)
         elif i_id == 3:
-            color = V(1., 0., 0.)
-            dir, fac = mat_diffuse.bounce(dir, i_nrm)
-            color *= fac
+            dir, color = mat_ground.bounce(dir, i_nrm)
         elif i_id == 4:
-            color = V(1., 1., 1.)
-            dir, fac = mat_glossy.bounce(dir, i_nrm)
-            color *= fac
+            dir, color = mat_glossy.bounce(dir, i_nrm)
         return color, org, dir
 
     @ti.kernel
@@ -248,7 +241,7 @@ class PathEngine:
                 self.count[I] += 1
 
     def main(self):
-        for i in range(1024):
+        for i in range(512):
             with ezprof.scope('step'):
                 self.generate_rays()
                 for j in range(5):
