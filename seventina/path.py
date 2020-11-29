@@ -34,18 +34,17 @@ def union_intersect(ret1, ret2):
 
 
 @ti.func
-def spherical(theta, sin_phi):
-    unit = V(ti.cos(theta * ti.tau), ti.sin(theta * ti.tau))
-    cos_phi = ti.sqrt(1 - sin_phi**2)
-    dir = V23(cos_phi * unit, sin_phi)
+def spherical(t, s):
+    unit = V(ti.cos(t * ti.tau), ti.sin(t * ti.tau))
+    dir = V23(ti.sqrt(1 - s**2) * unit, s)
     return dir
 
 
 @ti.func
 def unspherical(dir):
     theta = ti.atan2(dir.y, dir.x) / ti.tau
-    sin_phi = dir.z
-    return theta, sin_phi
+    phine = dir.z
+    return theta, phine
 
 
 @ti.func
@@ -69,20 +68,26 @@ class BRDF:
 
     @ti.func
     def rand_odir(self, idir):
-        return spherical(ti.random(), ti.random())
-
-    @ti.func
-    def mapfactor(self, idir, odir):
-        return 1
+        return 1, spherical(ti.random(), ti.random())
 
     @ti.func
     def bounce(self, dir, nrm):
         axes = tangentspace(nrm)
         idir = axes.transpose() @ -dir
-        odir = self.rand_odir(idir)
+        fac, odir = self.rand_odir(idir)
         clr = self.brdf(idir, odir)
-        clr *= self.mapfactor(idir, odir)
-        return axes @ odir, clr
+        return axes @ odir, clr * fac
+
+
+@ti.func
+def expensive(x, t, k):
+    u = ti.tanh(x * k - t)
+    n1 = ti.tanh(t)
+    n2 = ti.tanh(k - t)
+    pdf = (1 - u**2) / (n1 + n2) * k
+    cdf = (u + n1) / (n2 + n1)
+    return cdf, pdf
+
 
 
 class CookTorranceBRDF(BRDF):
@@ -93,6 +98,22 @@ class CookTorranceBRDF(BRDF):
         self.basecolor = ti.Vector.field(3, float, ())
 
         super().__init__(**kwargs)
+
+    @ti.func
+    def rand_odir(self, idir):
+        rand = ti.random()
+        pdf = 1.
+        cdf = rand
+        if self.roughness[None] < 0.25:
+            expect_cdf = idir.z
+            A = 0.25
+            B = 0.3
+            C = (1 - 2*A) * (1 - B) / (2*A)
+            pdf = 1 / B
+            if ti.random() > B:
+                pdf = 1 / C
+                cdf = expect_cdf + (ti.random() * 2 - 1) * A
+        return pdf, spherical(ti.random(), cdf)
 
     @ti.func
     def ischlick(self, cost):
@@ -262,7 +283,7 @@ class PathEngine:
                 self.count[I] += 1
 
     def main(self):
-        for i in range(512):
+        for i in range(2048):
             with ezprof.scope('step'):
                 self.generate_rays()
                 for j in range(5):
