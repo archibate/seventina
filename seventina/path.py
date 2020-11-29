@@ -12,7 +12,7 @@ def reflect(I, N):
 
 
 @ti.func
-def sphere_intersect(s_pos, s_rad, r_org, r_dir):
+def sphere_intersect(s_id, s_pos, s_rad, r_org, r_dir):
     i_t = INF
     op = s_pos - r_org
     b = op.dot(r_dir)
@@ -26,15 +26,40 @@ def sphere_intersect(s_pos, s_rad, r_org, r_dir):
                 i_t = INF
     i_pos = r_org + i_t * r_dir
     i_nrm = (i_pos - s_pos).normalized()
-    return i_t, i_pos, i_nrm
+    return i_t, s_id, i_pos, i_nrm
 
 
 @ti.func
 def union_intersect(ret1, ret2):
-    t, pos, nrm = ret1
+    t, id, pos, nrm = ret1
     if ret2[0] < t:
-        t, pos, nrm = ret2
-    return t, pos, nrm
+        t, id, pos, nrm = ret2
+    return t, id, pos, nrm
+
+
+@ti.func
+def randu2():
+    a = ti.random() * ti.tau
+    return V(ti.cos(a), ti.sin(a))
+
+
+@ti.func
+def randuu3():
+    u = randu2()
+    s = ti.random()
+    c = ti.sqrt(1 - s**2)
+    return V23(c * u, s)
+
+
+@ti.func
+def diffuse_reflect(dir, nrm):
+    up = V(0., 1., 0.)
+    bitan = nrm.cross(up).normalized()
+    tan = bitan.cross(nrm)
+
+    ndir = randuu3()
+    ndir = ndir.x * tan + ndir.y * bitan + ndir.z * nrm
+    return ndir
 
 
 @ti.data_oriented
@@ -68,20 +93,21 @@ class PathEngine:
 
     @ti.func
     def intersect(self, org, dir):
-        ret1 = sphere_intersect(V(+.5, 0., 0.), 0.4, org, dir)
-        ret2 = sphere_intersect(V(-.5, 0., 0.), 0.4, org, dir)
+        ret1 = sphere_intersect(1, V(-.5, 0., 0.), 0.4, org, dir)
+        ret2 = sphere_intersect(2, V(+.5, 0., 0.), 0.4, org, dir)
         ret = union_intersect(ret1, ret2)
         return ret
 
     @ti.func
-    def bounce_ray(self, org, dir, i_pos, i_nrm):
+    def bounce_ray(self, org, dir, i_id, i_pos, i_nrm):
         org = i_pos + i_nrm * EPS
-        color = V(1., 1., 1.)
-        if ti.random() > 0.3:
-            dir = reflect(dir, i_nrm)
-        else:
+        color = V(0., 0., 0.)
+        if i_id == 1:
             color = V(1., 1., 1.)
             dir *= 0
+        elif i_id == 2:
+            color = V(1., 1., 1.)
+            dir = diffuse_reflect(dir, i_nrm)
         return color, org, dir
 
     @ti.kernel
@@ -92,12 +118,12 @@ class PathEngine:
 
             org = self.ray_org[r]
             dir = self.ray_dir[r]
-            t, i_pos, i_nrm = self.intersect(org, dir)
+            t, i_id, i_pos, i_nrm = self.intersect(org, dir)
             if t >= INF:
                 self.ray_color[r] *= 0
                 self.ray_dir[r] *= 0
             else:
-                color, org, dir = self.bounce_ray(org, dir, i_pos, i_nrm)
+                color, org, dir = self.bounce_ray(org, dir, i_id, i_pos, i_nrm)
                 self.ray_color[r] *= color
                 self.ray_org[r] = org
                 self.ray_dir[r] = dir
@@ -114,7 +140,7 @@ class PathEngine:
                 self.count[I] += 1
 
     def main(self):
-        for i in range(4):
+        for i in range(256):
             with ezprof.scope('step'):
                 self.generate_rays()
                 for j in range(5):
@@ -123,5 +149,5 @@ class PathEngine:
         ezprof.show()
         ti.imshow(ti.imresize(self.screen, 512))
 
-ti.init(ti.cpu)
+ti.init(ti.gpu)
 PathEngine().main()

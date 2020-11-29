@@ -7,7 +7,8 @@ setattr(ti, 'static', lambda x, *xs: [x] + list(xs) if xs else x) or setattr(
         (y.__name__ != 'assign' or not setattr(y, '__name__', '_assign'))
         and f(x, y, z))(ti.Matrix.element_wise_writeback_binary)) or setattr(
         ti.Matrix, 'is_global', (lambda f: lambda x: len(x) and f(x))(
-        ti.Matrix.is_global))
+        ti.Matrix.is_global)) or setattr(ti, 'pi', __import__('math').pi
+        ) or setattr(ti, 'tau', __import__('math').tau)
 
 
 ti.smart = lambda x: x
