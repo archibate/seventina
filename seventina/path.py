@@ -7,11 +7,6 @@ INF = 1e8
 
 
 @ti.func
-def reflect(I, N):
-    return I - 2 * N.dot(I) * N
-
-
-@ti.func
 def sphere_intersect(s_id, s_pos, s_rad, r_org, r_dir):
     i_t = INF
     op = s_pos - r_org
@@ -78,8 +73,10 @@ class PathEngine:
     @ti.func
     def generate_ray(self, I):
         coor = I / self.res * 2 - 1
-        org = V23(coor, -1.)
-        dir = V(0., 0., 1.)
+        #org = V23(coor, -1.)
+        #dir = V(0., 0., 1.)
+        org = V(0., 0., -1.)
+        dir = V23(coor, 1.).normalized()
         return org, dir
 
     @ti.kernel
@@ -93,9 +90,10 @@ class PathEngine:
 
     @ti.func
     def intersect(self, org, dir):
-        ret1 = sphere_intersect(1, V(-.5, 0., 0.), 0.4, org, dir)
-        ret2 = sphere_intersect(2, V(+.5, 0., 0.), 0.4, org, dir)
-        ret = union_intersect(ret1, ret2)
+        ret1 = sphere_intersect(1, V(-.5, 0., 0.), 0.35, org, dir)
+        ret2 = sphere_intersect(2, V(+.5, 0., 0.), 0.35, org, dir)
+        ret3 = sphere_intersect(3, V(0, -1e2-.5, 0.), 1e2, org, dir)
+        ret = union_intersect(ret1, union_intersect(ret2, ret3))
         return ret
 
     @ti.func
@@ -103,10 +101,13 @@ class PathEngine:
         org = i_pos + i_nrm * EPS
         color = V(0., 0., 0.)
         if i_id == 1:
-            color = V(1., 1., 1.)
+            color = V(2., 2., 2.)
             dir *= 0
         elif i_id == 2:
             color = V(1., 1., 1.)
+            dir = diffuse_reflect(dir, i_nrm)
+        elif i_id == 3:
+            color = V(1., 0., 0.)
             dir = diffuse_reflect(dir, i_nrm)
         return color, org, dir
 
@@ -140,14 +141,14 @@ class PathEngine:
                 self.count[I] += 1
 
     def main(self):
-        for i in range(256):
+        for i in range(512):
             with ezprof.scope('step'):
                 self.generate_rays()
-                for j in range(5):
+                for j in range(4):
                     self.step_rays()
                 self.update_screen()
         ezprof.show()
-        ti.imshow(ti.imresize(self.screen, 512))
+        ti.imshow(aces_tonemap(ti.imresize(self.screen, 512)))
 
 ti.init(ti.gpu)
 PathEngine().main()

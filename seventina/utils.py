@@ -145,3 +145,14 @@ def mapply_pos(mat, pos):
 def mapply_dir(mat, pos):
     res, rew = mapply(mat, pos, 0)
     return res
+
+
+@ti.pyfunc
+def reflect(I, N):
+    return I - 2 * N.dot(I) * N
+
+
+@ti.pyfunc
+def aces_tonemap(color):
+    # https://zhuanlan.zhihu.com/p/21983679
+    return color * (2.51 * color + 0.03) / (color * (2.43 * color + 0.59) + 0.14)
