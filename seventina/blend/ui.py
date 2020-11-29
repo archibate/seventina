@@ -35,6 +35,7 @@ class SeventinaOptionPanel(bpy.types.Panel):
         layout.prop(scene, 'seventina_resolution_y')
         layout.prop(scene, 'seventina_max_faces')
         layout.prop(scene, 'seventina_max_verts')
+        layout.prop(scene, 'seventina_max_lights')
         layout.prop(scene, 'seventina_backend')
         layout.operator('scene.seventina_start_engine')
 

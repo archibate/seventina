@@ -76,7 +76,7 @@ class BlenderEngine(Engine):
             self.render_object(object)
 
     def set_light(self, i, object):
-        color = object.data.color
+        color = np.array(object.data.color) * object.data.energy / 1000
         L2W = np.array(object.matrix_world)
 
         if object.data.type == 'SUN':
@@ -87,6 +87,7 @@ class BlenderEngine(Engine):
             assert False, f'unsupported light type: {object.data.type}'
 
         self.lights[i] = dir.tolist()
+        self.light_color[i] = color.tolist()
 
     def render_object(self, object):
         L2W = np.array(object.matrix_world)

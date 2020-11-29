@@ -50,6 +50,7 @@ class Engine:
         self.L2W = ti.Matrix.field(4, 4, float, ())
 
         self.lights = ti.Vector.field(4, float, maxlights)
+        self.light_color = ti.Vector.field(3, float, maxlights)
         self.nlights = ti.field(int, ())
 
         @ti.materialize_callback
@@ -120,10 +121,10 @@ class Engine:
 
         final = V(0.0, 0.0, 0.0)
         for l in ti.smart(self.get_lights_range()):
-            light, lcolor, lfacs = self.get_light_vector(l)
+            light, lcolor = self.get_light_vector(l)
             light_dir = light.xyz - pos * light.w
             light_dist = light_dir.norm()
-            lcolor *= lfacs.x + lfacs.y / light_dist + lfacs.z / light_dist**2
+            lcolor /= light_dist**2
             light_dir /= light_dist
             color = lcolor * max(0, normal.dot(light_dir))
             final += color
@@ -154,4 +155,4 @@ class Engine:
 
     @ti.func
     def get_light_vector(self, l):
-        return self.lights[l], V(1.0, 1.0, 1.0), V(0.0, 0.0, 1.0)
+        return self.lights[l], self.light_color[l]
