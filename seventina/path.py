@@ -1,6 +1,6 @@
 from utils import *
 import ezprof
-ti.init(ti.gpu)
+ti.init(ti.opengl)
 
 
 EPS = 1e-6
@@ -42,9 +42,8 @@ def spherical(t, s):
 
 @ti.func
 def unspherical(dir):
-    theta = ti.atan2(dir.y, dir.x) / ti.tau
-    phine = dir.z
-    return theta, phine
+    t = ti.atan2(dir.y, dir.x) / ti.tau
+    return t, dir.z
 
 
 @ti.func
@@ -99,21 +98,47 @@ class CookTorranceBRDF(BRDF):
 
         super().__init__(**kwargs)
 
+        self.A = ti.field(float, ())
+        self.B = ti.field(float, ())
+
+        ti.materialize_callback(self.bake_importance)
+
+    @ti.kernel
+    def bake_importance(self):
+        roughness = self.roughness[None]
+        metallic = self.metallic[None]
+        if roughness < 0.3:
+            self.A[None] = roughness * 0.5 / 0.3
+            self.B[None] = metallic * 0.8 / 1.0
+            #self.B[None] = 0#####
+        self.A[None] = 0.1
+        self.B[None] = 0.9
+
     @ti.func
     def rand_odir(self, idir):
-        rand = ti.random()
-        pdf = 1.
-        cdf = rand
-        if self.roughness[None] < 0.25:
-            expect_cdf = idir.z
-            A = 0.25
-            B = 0.3
-            C = (1 - 2*A) * (1 - B) / (2*A)
-            pdf = 1 / B
-            if ti.random() > B:
-                pdf = 1 / C
-                cdf = expect_cdf + (ti.random() * 2 - 1) * A
-        return pdf, spherical(ti.random(), cdf)
+        rand1 = ti.random()
+        rand2 = ti.random()
+        spdf = 1.0
+        scdf = rand1
+        tpdf = 1.0
+        tcdf = rand2
+        if self.B[None] != 0:
+            A = self.A[None]
+            B = self.B[None]
+            spdf = 1 / (1 - B)
+            #tpdf = 1 / (1 - B)
+            if ti.random() < B:
+                etcdf, escdf = unspherical(reflect(-idir, V(0., 0., 1.)))
+                esmin = clamp(escdf - A / 2, 0, 1)
+                esmax = clamp(escdf + A / 2, 0, 1)
+                #etmin = etcdf - A / 2
+                #etmax = etcdf + A / 2
+                As = esmax - esmin
+                spdf = 1 / (1 + B / As)
+                #tpdf = 1 / (1 + B / A)
+                scdf = lerp(rand1, esmin, esmax)
+                #tcdf = lerp(rand2, etmin, etmax)
+        return tpdf * spdf, spherical(tcdf, scdf)
 
     @ti.func
     def ischlick(self, cost):
@@ -187,7 +212,7 @@ mat_diffuse = CookTorranceBRDF(roughness=0.8,
         basecolor=(1, 1, 1),
         metallic=0.0,
         specular=0.5)
-mat_glossy = CookTorranceBRDF(roughness=0.1,
+mat_glossy = CookTorranceBRDF(roughness=0.2,
         basecolor=(1, 1, 1),
         metallic=0.9,
         specular=0.5)
@@ -283,13 +308,14 @@ class PathEngine:
                 self.count[I] += 1
 
     def main(self):
-        for i in range(2048):
+        for i in range(512):
             with ezprof.scope('step'):
                 self.generate_rays()
                 for j in range(5):
                     self.step_rays()
                 self.update_screen()
         ezprof.show()
-        ti.imshow(aces_tonemap(ti.imresize(self.screen, 512)))
+        img = aces_tonemap(ti.imresize(self.screen, 512))
+        ti.imshow(img)#; ti.imwrite(img, '/tmp/out.png')
 
 PathEngine().main()

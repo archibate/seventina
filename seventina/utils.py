@@ -156,3 +156,8 @@ def reflect(I, N):
 def aces_tonemap(color):
     # https://zhuanlan.zhihu.com/p/21983679
     return color * (2.51 * color + 0.03) / (color * (2.43 * color + 0.59) + 0.14)
+
+
+@ti.func
+def lerp(k, xmin, xmax):
+    return xmin * (1 - k) + xmax * k
