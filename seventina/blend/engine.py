@@ -73,12 +73,12 @@ class BlenderEngine(Engine):
 
         self.nlights[None] = len(lights)
         for i, object in enumerate(lights):
-            self.set_light(i, object)
+            self.update_light(i, object)
 
         for object in meshes:
             self.render_object(object)
 
-    def set_light(self, i, object):
+    def update_light(self, i, object):
         color = np.array(object.data.color) * object.data.energy / 1000
         L2W = np.array(object.matrix_world)
 

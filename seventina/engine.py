@@ -54,9 +54,13 @@ class Engine:
 
         @ti.materialize_callback
         @ti.kernel
-        def init_matrices():
+        def init_engine():
+            self.nlights[None] = 1
+            self.lights[0] = [0, 0, 1, 0]
             self.L2V[None] = ti.Matrix.identity(float, 4)
             self.L2W[None] = ti.Matrix.identity(float, 4)
+            for i in self.lights:
+                self.light_color[i] = [1, 1, 1]
             for i, j in self.depth:
                 self.depth[i, j] = 1e6
 
@@ -132,7 +136,7 @@ class Engine:
             yield i
 
     @ti.func
-    def get_light_vector(self, l):
+    def get_light_data(self, l):
         return self.lights[l], self.light_color[l]
 
     @ti.kernel
@@ -155,3 +159,9 @@ class Engine:
                 f'please increase maxfaces to {len(faces)}'
         self.set_verts(verts)
         self.set_faces(faces)
+
+    def set_lights(self, lights):
+        self.nlights[None] = len(lights)
+        for i, (dir, color) in enumerate(lights):
+            self.lights[i] = dir
+            self.light_color[i] = color

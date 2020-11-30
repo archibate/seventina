@@ -17,7 +17,7 @@ class Shader:
 
         final = V(0.0, 0.0, 0.0)
         for l in ti.smart(engine.get_lights_range()):
-            light, lcolor = engine.get_light_vector(l)
+            light, lcolor = engine.get_light_data(l)
             light_dir = light.xyz - pos * light.w
             light_dist = light_dir.norm()
             lcolor /= light_dist**2
