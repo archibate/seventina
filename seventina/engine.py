@@ -105,8 +105,8 @@ class Engine:
 
     @ti.kernel
     def clear_depth(self):
-        for i, j in self.depth:
-            self.depth[i, j] = 1e6
+        for P in ti.grouped(self.depth):
+            self.depth[P] = 1e6
 
     def render(self, color, shader):
         self.raster()

@@ -78,7 +78,7 @@ def init_engine():
     return BlenderEngine()
 
 
-def render_main(width, height, region3d):
+def render_main(width, height, region3d=None):
     pixels = np.empty(width * height * 4, dtype=np.float32)
 
     @worker.launch
@@ -86,7 +86,10 @@ def render_main(width, height, region3d):
         if not hasattr(self, 'engine'):
             self.engine = init_engine()
 
-        self.engine.update_region_data(region3d)
+        if region3d is None:
+            self.engine.update_default_camera()
+        else:
+            self.engine.update_region_data(region3d)
         self.engine.render_pixels(pixels, width, height)
 
     worker.wait_done()

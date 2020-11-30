@@ -8,7 +8,7 @@ from .cache import IDCache
 
 @ti.data_oriented
 class OutputPixelConverter:
-    def _cook(self, color):
+    def cook(self, color):
         if isinstance(color, ti.Expr):
             color = ti.Vector([color, color, color])
         elif isinstance(color, ti.Matrix):
@@ -23,18 +23,17 @@ class OutputPixelConverter:
                 assert False, color.n
         return color
 
-    @ti.func
-    def color_at(self, img: ti.template(), i, j, width, height):
-        ti.static_assert(len(img.shape) == 2)
-        scale = ti.Vector(img.shape) / ti.Vector([width, height])
-        pos = ti.Vector([i, j]) * scale
-        color = bilerp(img, pos)
-        return self._cook(color)
-
     @ti.kernel
-    def render(self, img: ti.template(), out: ti.ext_arr(), width: int, height: int):
+    def render(self, img: ti.template(), use_bilerp: ti.template(),
+            out: ti.ext_arr(), width: int, height: int):
         for i, j in ti.ndrange(width, height):
-            r, g, b = self.color_at(img, i, j, width, height)
+            r, g, b = 0., 0., 0.
+            if ti.static(use_bilerp):
+                scale = ti.Vector(img.shape) / ti.Vector([width, height])
+                pos = ti.Vector([i, j]) * scale
+                r, g, b = self.cook(bilerp(img, pos))
+            else:
+                r, g, b = self.cook(img[i, j])
             base = (j * width + i) * 4
             out[base + 0] = r
             out[base + 1] = g
@@ -106,9 +105,20 @@ class BlenderEngine(Engine):
     def update_region_data(self, region3d):
         self.W2V_np = np.array(region3d.perspective_matrix)
 
+    def update_default_camera(self):
+        camera = bpy.context.scene.camera
+        render = bpy.context.scene.render
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        proj = np.array(camera.calc_matrix_camera(depsgraph,
+            x=render.resolution_x, y=render.resolution_y,
+            scale_x=render.pixel_aspect_x, scale_y=render.pixel_aspect_y))
+        view = np.linalg.inv(np.array(camera.matrix_world))
+        self.W2V_np = proj @ view
+
     def render_pixels(self, pixels, width, height):
         self.render_scene()
-        self.output.render(self.color, pixels, width, height)
+        use_bilerp = not (width == self.N.x and height == self.N.y)
+        self.output.render(self.color, use_bilerp, pixels, width, height)
 
     def invalidate_callback(self, update):
         object = update.id

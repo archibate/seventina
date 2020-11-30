@@ -97,7 +97,8 @@ class CustomDrawData:
         self.dimensions = dimensions
         self.perspective = perspective
 
-        width, height = dimensions
+        width = bpy.context.scene.seventina_resolution_x
+        height = bpy.context.scene.seventina_resolution_y
         pixels = worker.render_main(width, height, region3d)
 
         # Generate dummy float image buffer
@@ -130,6 +131,7 @@ class CustomDrawData:
         bgl.glEnableVertexAttribArray(position_location)
 
         # Generate geometry buffers for drawing textured quad
+        width, height = dimensions
         position = [0.0, 0.0, width, 0.0, width, height, 0.0, height]
         position = bgl.Buffer(bgl.GL_FLOAT, len(position), position)
         texcoord = [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0]
