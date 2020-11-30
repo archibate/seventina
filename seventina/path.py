@@ -109,36 +109,32 @@ class CookTorranceBRDF(BRDF):
         metallic = self.metallic[None]
         if roughness < 0.3:
             self.A[None] = roughness * 0.5 / 0.3
-            self.B[None] = metallic * 0.8 / 1.0
+            self.B[None] = metallic * 0.9 / 1.0
             #self.B[None] = 0#####
-        self.A[None] = 0.1
-        self.B[None] = 0.9
+        self.A[None] = 0.2
+        self.B[None] = 0.8
 
     @ti.func
     def rand_odir(self, idir):
-        rand1 = ti.random()
-        rand2 = ti.random()
+        rands = ti.random()
+        randt = ti.random()
         spdf = 1.0
-        scdf = rand1
+        scdf = rands
         tpdf = 1.0
-        tcdf = rand2
+        tcdf = randt
         if self.B[None] != 0:
+            etcdf, escdf = unspherical(reflect(-idir, V(0., 0., 1.)))
             A = self.A[None]
             B = self.B[None]
-            spdf = 1 / (1 - B)
-            #tpdf = 1 / (1 - B)
-            if ti.random() < B:
-                etcdf, escdf = unspherical(reflect(-idir, V(0., 0., 1.)))
-                esmin = clamp(escdf - A / 2, 0, 1)
-                esmax = clamp(escdf + A / 2, 0, 1)
-                #etmin = etcdf - A / 2
-                #etmax = etcdf + A / 2
-                As = esmax - esmin
-                spdf = 1 / (1 + B / As)
-                #tpdf = 1 / (1 + B / A)
-                scdf = lerp(rand1, esmin, esmax)
-                #tcdf = lerp(rand2, etmin, etmax)
-        return tpdf * spdf, spherical(tcdf, scdf)
+            if randt < B:
+                etmin = etcdf - A / 2
+                etmax = etcdf + A / 2
+                tcdf = lerp(randt / B, etmin, etmax)
+                tpdf = 2 - B
+            else:
+                tcdf = (randt - B) / (1 - B)
+                tpdf = 1 - B
+        return 1 / (tpdf * spdf), spherical(tcdf, scdf)
 
     @ti.func
     def ischlick(self, cost):
