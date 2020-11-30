@@ -1,8 +1,9 @@
 from .engine import Engine
 from .shader import Shader
-from .camera import Camera
+from .camera import Camera, lookat, perspective
 from .assimp import readobj
 import taichi as ti
+import numpy as np
 
 engine = Engine()
 shader = Shader()
@@ -14,8 +15,15 @@ img = ti.Vector.field(3, float, engine.res)
 
 gui = ti.GUI('monkey', engine.res)
 while gui.running and not gui.get_event(gui.ESCAPE):
+    camera.view = lookat(back=(0, 0, 1))
+    camera.proj = np.array([
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0.4, 1],
+    ])
 
-    engine.set_perspective(camera.pers)
+    engine.set_camera(camera)
     engine.set_mesh(verts, faces)
     engine.render(img, shader)
 
