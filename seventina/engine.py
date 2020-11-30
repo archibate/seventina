@@ -40,7 +40,6 @@ class Engine:
         self.N = tovector(N)
         self.occup = ti.field(int, self.N)
         self.depth = ti.field(float, self.N)
-        self.color = ti.Vector.field(3, float, self.N)
 
         self.verts = ti.Vector.field(3, float, maxverts)
         self.faces = ti.Vector.field(3, int, maxfaces)
@@ -84,7 +83,7 @@ class Engine:
                     self.occup[P] = f + 1
 
     @ti.kernel
-    def paint(self):
+    def paint(self, color: ti.template(), shader: ti.template()):
         for P in ti.grouped(self.occup):
             f = self.occup[P] - 1
             if f == -1:
@@ -102,40 +101,22 @@ class Engine:
 
             wei /= V(*[mapply(self.L2V[None], p, 1)[1] for p in [A, B, C]])
             wei /= wei.x + wei.y + wei.z
-            self.color[P] = self.interpolate(wei, f)
+            color[P] = self.interpolate(shader, wei, A, B, C)
 
     @ti.kernel
-    def clear(self):
+    def clear_depth(self):
         for i, j in self.depth:
-            self.color[i, j] = 0
             self.depth[i, j] = 1e6
 
-    def render(self):
+    def render(self, color, shader):
         self.raster()
-        self.paint()
+        self.paint(color, shader)
 
     @ti.func
-    def shade_color(self, pos, normal):
-        pos = mapply_pos(self.L2W[None], pos)
-        normal = mapply_dir(self.L2W[None], normal)
-
-        final = V(0.0, 0.0, 0.0)
-        for l in ti.smart(self.get_lights_range()):
-            light, lcolor = self.get_light_vector(l)
-            light_dir = light.xyz - pos * light.w
-            light_dist = light_dir.norm()
-            lcolor /= light_dist**2
-            light_dir /= light_dist
-            color = lcolor * max(0, normal.dot(light_dir))
-            final += color
-        return final
-
-    @ti.func
-    def interpolate(self, wei, f):
-        A, B, C = self.get_face_vertices(f)
+    def interpolate(self, shader: ti.template(), wei, A, B, C):
         pos = wei.x * A + wei.y * B + wei.z * C
         normal = (B - A).cross(C - A).normalized()
-        return self.shade_color(pos, normal)
+        return shader.shade_color(self, pos, normal)
 
     @ti.func
     def get_faces_range(self):

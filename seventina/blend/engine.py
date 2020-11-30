@@ -2,6 +2,7 @@ import bpy
 
 from ..utils import *
 from ..engine import Engine
+from ..shader import Shader
 from .cache import IDCache
 
 
@@ -51,11 +52,14 @@ class BlenderEngine(Engine):
             bpy.context.scene.seventina_max_lights)
         self.output = OutputPixelConverter()
         self.cache = IDCache()
+        self.shader = Shader()
+        self.color = ti.Vector.field(3, float, self.N)
 
         self.W2V_np = None
 
     def render_scene(self):
-        self.clear()
+        self.clear_depth()
+        self.color.fill(0)
 
         lights = []
         meshes = []
@@ -96,7 +100,8 @@ class BlenderEngine(Engine):
 
         verts, faces = self.cache.lookup(blender_get_object_mesh, object)
         self.update_mesh(verts, faces)
-        self.render()
+
+        self.render(self.color, self.shader)
 
     def update_region_data(self, region3d):
         self.W2V_np = np.array(region3d.perspective_matrix)
