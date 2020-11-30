@@ -24,7 +24,7 @@ class OutputPixelConverter:
         return color
 
     @ti.kernel
-    def render(self, img: ti.template(), use_bilerp: ti.template(),
+    def dump(self, img: ti.template(), use_bilerp: ti.template(),
             out: ti.ext_arr(), width: int, height: int):
         for i, j in ti.ndrange(width, height):
             r, g, b = 0., 0., 0.
@@ -118,7 +118,7 @@ class BlenderEngine(Engine):
     def render_pixels(self, pixels, width, height):
         self.render_scene()
         use_bilerp = not (width == self.N.x and height == self.N.y)
-        self.output.render(self.color, use_bilerp, pixels, width, height)
+        self.output.dump(self.color, use_bilerp, pixels, width, height)
 
     def invalidate_callback(self, update):
         object = update.id

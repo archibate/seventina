@@ -5,7 +5,7 @@ bl_info = {
         'version': (0, 0, 0),
         'blender': (2, 81, 0),
         'location': 'Seventina Window',
-        'support': 'COMMUNITY',
+        'support': 'TESTING',
         'wiki_url': 'https://github.com/archibate/seventina/wiki',
         'tracker_url': 'https://github.com/archibate/seventina/issues',
         'warning': 'Development mode',

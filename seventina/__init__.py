@@ -16,6 +16,7 @@ registered = False
 
 
 def register():
+    from . import inject
     from . import blend
     blend.register()
 

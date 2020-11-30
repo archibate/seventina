@@ -54,7 +54,7 @@ class Engine:
 
         @ti.materialize_callback
         @ti.kernel
-        def _():
+        def init_matrices():
             self.L2V[None] = ti.Matrix.identity(float, 4)
             self.L2W[None] = ti.Matrix.identity(float, 4)
             for i, j in self.depth:
