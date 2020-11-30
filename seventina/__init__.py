@@ -24,3 +24,11 @@ def register():
 def unregister():
     from . import blend
     blend.unregister()
+
+
+__all__ = [
+    'engine',
+    'shader',
+    'assimp',
+    'utils',
+]
