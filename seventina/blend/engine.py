@@ -52,7 +52,7 @@ class BlenderEngine(Engine):
         self.output = OutputPixelConverter()
         self.cache = IDCache()
         self.shader = Shader()
-        self.color = ti.Vector.field(3, float, self.N)
+        self.color = ti.Vector.field(3, float, self.res)
 
         self.W2V_np = None
 
@@ -98,8 +98,8 @@ class BlenderEngine(Engine):
         self.L2V[None] = (self.W2V_np @ L2W).tolist()
 
         verts, faces = self.cache.lookup(blender_get_object_mesh, object)
-        self.update_mesh(verts, faces)
 
+        self.set_mesh(verts, faces)
         self.render(self.color, self.shader)
 
     def update_region_data(self, region3d):
@@ -117,34 +117,13 @@ class BlenderEngine(Engine):
 
     def render_pixels(self, pixels, width, height):
         self.render_scene()
-        use_bilerp = not (width == self.N.x and height == self.N.y)
+        use_bilerp = not (width == self.res.x and height == self.res.y)
         self.output.dump(self.color, use_bilerp, pixels, width, height)
 
     def invalidate_callback(self, update):
         object = update.id
         if update.is_updated_geometry:
             self.cache.invalidate(object)
-
-    @ti.kernel
-    def _update_mesh_verts(self, verts: ti.ext_arr()):
-        for i in range(verts.shape[0]):
-            for k in ti.static(range(3)):
-                self.verts[i][k] = verts[i, k]
-
-    @ti.kernel
-    def _update_mesh_faces(self, faces: ti.ext_arr()):
-        for i in range(faces.shape[0]):
-            for k in ti.static(range(3)):
-                self.faces[i][k] = faces[i, k]
-
-    def update_mesh(self, verts, faces):
-        assert len(verts) <= self.verts.shape[0], \
-                f'please increase max_verts to {len(verts)}'
-        assert len(faces) <= self.faces.shape[0], \
-                f'please increase max_faces to {len(faces)}'
-        self._update_mesh_verts(verts)
-        self._update_mesh_faces(faces)
-        self.nfaces[None] = len(faces)
 
 
 def bmesh_verts_to_numpy(bm):

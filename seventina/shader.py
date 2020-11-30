@@ -2,6 +2,13 @@ from .utils import *
 
 
 @ti.data_oriented
+class MagentaShader:
+    @ti.func
+    def shade_color(self, engine, pos, normal):
+        return V(1.0, 0.0, 1.0)
+
+
+@ti.data_oriented
 class Shader:
     @ti.func
     def shade_color(self, engine, pos, normal):

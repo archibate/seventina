@@ -23,7 +23,7 @@ class Engine:
     @ti.func
     def draw_trip(self, a, b, c):
         bot, top = ifloor(min(a, b, c)), iceil(max(a, b, c))
-        bot, top = max(bot, 0), min(top, self.N - 1)
+        bot, top = max(bot, 0), min(top, self.res - 1)
         n = (b - a).cross(c - a)
         abn = (a - b) / n
         bcn = (b - c) / n
@@ -36,10 +36,10 @@ class Engine:
             if all(wei >= 0):
                 yield pos, wei
 
-    def __init__(self, N, maxverts, maxfaces, maxlights):
-        self.N = tovector(N)
-        self.occup = ti.field(int, self.N)
-        self.depth = ti.field(float, self.N)
+    def __init__(self, res=512, maxverts=65536, maxfaces=65536, maxlights=16):
+        self.res = tovector((res, res) if isinstance(res, int) else res)
+        self.occup = ti.field(int, self.res)
+        self.depth = ti.field(float, self.res)
 
         self.verts = ti.Vector.field(3, float, maxverts)
         self.faces = ti.Vector.field(3, int, maxfaces)
@@ -66,7 +66,7 @@ class Engine:
 
     @ti.func
     def to_viewport(self, p):
-        return (p.xy * 0.5 + 0.5) * self.N
+        return (p.xy * 0.5 + 0.5) * self.res
 
     @ti.kernel
     def raster(self):
@@ -92,11 +92,8 @@ class Engine:
             A, B, C = self.get_face_vertices(f)
             a, b, c = [self.to_viewport(self.to_viewspace(p)) for p in [A, B, C]]
             n = (b - a).cross(c - a)
-            abn = (a - b) / n
-            bcn = (b - c) / n
-            can = (c - a) / n
-            w_bc = (P - b).cross(bcn)
-            w_ca = (P - c).cross(can)
+            w_bc = (P - b).cross(b - c) / n
+            w_ca = (P - c).cross(c - a) / n
             wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
 
             wei /= V(*[mapply(self.L2V[None], p, 1)[1] for p in [A, B, C]])
@@ -137,3 +134,24 @@ class Engine:
     @ti.func
     def get_light_vector(self, l):
         return self.lights[l], self.light_color[l]
+
+    @ti.kernel
+    def set_verts(self, verts: ti.ext_arr()):
+        for i in range(verts.shape[0]):
+            for k in ti.static(range(3)):
+                self.verts[i][k] = verts[i, k]
+
+    @ti.kernel
+    def set_faces(self, faces: ti.ext_arr()):
+        self.nfaces[None] = faces.shape[0]
+        for i in range(faces.shape[0]):
+            for k in ti.static(range(3)):
+                self.faces[i][k] = faces[i, k]
+
+    def set_mesh(self, verts, faces):
+        assert len(verts) <= self.verts.shape[0], \
+                f'please increase maxverts to {len(verts)}'
+        assert len(faces) <= self.faces.shape[0], \
+                f'please increase maxfaces to {len(faces)}'
+        self.set_verts(verts)
+        self.set_faces(faces)
