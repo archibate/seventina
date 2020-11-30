@@ -88,7 +88,6 @@ def expensive(x, t, k):
     return cdf, pdf
 
 
-
 class CookTorranceBRDF(BRDF):
     def __init__(self, **kwargs):
         self.roughness = ti.field(float, ())
@@ -97,44 +96,6 @@ class CookTorranceBRDF(BRDF):
         self.basecolor = ti.Vector.field(3, float, ())
 
         super().__init__(**kwargs)
-
-        self.A = ti.field(float, ())
-        self.B = ti.field(float, ())
-
-        ti.materialize_callback(self.bake_importance)
-
-    @ti.kernel
-    def bake_importance(self):
-        roughness = self.roughness[None]
-        metallic = self.metallic[None]
-        if roughness < 0.3:
-            self.A[None] = roughness * 0.5 / 0.3
-            self.B[None] = metallic * 0.9 / 1.0
-            #self.B[None] = 0#####
-        self.A[None] = 0.2
-        self.B[None] = 0.8
-
-    @ti.func
-    def rand_odir(self, idir):
-        rands = ti.random()
-        randt = ti.random()
-        spdf = 1.0
-        scdf = rands
-        tpdf = 1.0
-        tcdf = randt
-        if self.B[None] != 0:
-            etcdf, escdf = unspherical(reflect(-idir, V(0., 0., 1.)))
-            A = self.A[None]
-            B = self.B[None]
-            if randt < B:
-                etmin = etcdf - A / 2
-                etmax = etcdf + A / 2
-                tcdf = lerp(randt / B, etmin, etmax)
-                tpdf = 2 - B
-            else:
-                tcdf = (randt - B) / (1 - B)
-                tpdf = 1 - B
-        return 1 / (tpdf * spdf), spherical(tcdf, scdf)
 
     @ti.func
     def ischlick(self, cost):
@@ -314,4 +275,6 @@ class PathEngine:
         img = aces_tonemap(ti.imresize(self.screen, 512))
         ti.imshow(img)#; ti.imwrite(img, '/tmp/out.png')
 
-PathEngine().main()
+
+if __name__ == '__main__':
+    PathEngine().main()
