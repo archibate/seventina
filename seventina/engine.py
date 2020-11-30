@@ -165,3 +165,6 @@ class Engine:
         for i, (dir, color) in enumerate(lights):
             self.lights[i] = dir
             self.light_color[i] = color
+
+    def set_perspective(self, pers):
+        self.L2V[None] = np.array(pers).tolist()
