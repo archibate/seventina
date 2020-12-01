@@ -24,12 +24,14 @@ class Control:
         self.up /= np.linalg.norm(self.up)
 
     def on_mmb_drag(self, delta, origin):
+        delta *= 4
 
-        for i in range(5):
-            self.back += self.right * delta[0] + self.up * delta[1]
-            self.right += -self.back * delta[0]
-            self.up += -self.back * delta[1]
-            self.renormalize()
+        self.back += self.right * delta[0] + self.up * delta[1]
+        self.right += -self.back * delta[0]
+        self.up += -self.back * delta[1]
+
+        self.up[0] = 0
+        self.renormalize()
 
     def make_view(self):
         from .camera import lookat

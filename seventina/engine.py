@@ -169,5 +169,5 @@ class Engine:
     def set_camera(self, camera):
         L2W = camera.model
         L2V = camera.proj @ camera.view @ camera.model
-        self.L2V[None] = np.array(L2V, dtype=np.float32).tolist()
-        self.L2W[None] = np.array(L2W, dtype=np.float32).tolist()
+        self.L2V.from_numpy(np.array(L2V, dtype=np.float32))
+        self.L2W.from_numpy(np.array(L2W, dtype=np.float32))
