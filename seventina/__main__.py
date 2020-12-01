@@ -7,7 +7,7 @@ import taichi as ti
 import numpy as np
 import ezprof
 
-engine = Engine()
+engine = Engine((1024, 768))
 
 img = ti.Vector.field(3, float, engine.res)
 shader = Shader(img)
@@ -17,7 +17,7 @@ o = readobj('assets/monkey.obj', 'xZy')
 verts, faces = o['v'], o['f'][:, :, 0]
 
 gui = ti.GUI('monkey', engine.res)
-ctl = Control(gui, fov=0)
+ctl = Control(gui)
 
 engine.set_mesh(verts, faces)
 

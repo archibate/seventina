@@ -156,6 +156,11 @@ def reflect(I, N):
 
 
 @ti.pyfunc
+def lerp(fac, src, dst):
+    src * (1 - fac) + dst * fac
+
+
+@ti.pyfunc
 def aces_tonemap(color):
     # https://zhuanlan.zhihu.com/p/21983679
     return color * (2.51 * color + 0.03) / (color * (2.43 * color + 0.59) + 0.14)

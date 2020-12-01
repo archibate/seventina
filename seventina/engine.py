@@ -52,6 +52,9 @@ class Engine:
         self.light_color = ti.Vector.field(3, float, maxlights)
         self.nlights = ti.field(int, ())
 
+        self.clipping = True
+        self.culling = False
+
         @ti.materialize_callback
         @ti.kernel
         def init_engine():
@@ -62,8 +65,8 @@ class Engine:
             self.L2W[None] = ti.Matrix.identity(float, 4)
             for i in self.lights:
                 self.light_color[i] = [1, 1, 1]
-            for i, j in self.depth:
-                self.depth[i, j] = 1
+
+        ti.materialize_callback(self.clear_depth)
 
     @ti.func
     def to_viewspace(self, p):
@@ -78,24 +81,33 @@ class Engine:
         for f in ti.smart(self.get_faces_range()):
             Al, Bl, Cl = self.get_face_vertices(f)
             Av, Bv, Cv = [self.to_viewspace(p) for p in [Al, Bl, Cl]]
-            a, b, c = [self.to_viewport(p) for p in [Av, Bv, Cv]]
-            n = (b - a).cross(c - a)
+            n = (Bv.xy - Av.xy).cross(Cv.xy - Av.xy)
             if n <= 0:
-                continue
+                if ti.static(self.culling):
+                    continue
+                else:
+                    Al, Bl, Cl = Al, Cl, Bl
 
-            wei_factor = 1 / V(*[mapply(self.L2V[None], p, 1)[1] for p in [Al, Bl, Cl]])
-            for pos, wei in ti.smart(self.draw_trip(a, b, c)):
+            if ti.static(self.clipping):
+                if not all(-1 <= Av <= 1):
+                    if not all(-1 <= Bv <= 1):
+                        if not all(-1 <= Cv <= 1):
+                            continue
+
+            Ai, Bi, Ci = [self.to_viewport(p) for p in [Av, Bv, Cv]]
+            wfac = 1 / V(*[mapply(self.L2V[None], p, 1)[1] for p in [Al, Bl, Cl]])
+            for pos, wei in ti.smart(self.draw_trip(Ai, Bi, Ci)):
                 P = int(pos)
                 depth = wei.x * Av.z + wei.y * Bv.z + wei.z * Cv.z
                 if ti.atomic_min(self.depth[P], depth) > depth:
-                    wei *= wei_factor
+                    wei *= wfac
                     wei /= wei.x + wei.y + wei.z
                     self.interpolate(shader, P, f, wei, Al, Bl, Cl)
 
     @ti.kernel
     def clear_depth(self):
         for P in ti.grouped(self.depth):
-            self.depth[P] = 1
+            self.depth[P] = 1e6
 
     @ti.func
     def interpolate(self, shader: ti.template(), P, f, wei, A, B, C):

@@ -1,6 +1,9 @@
 from .utils import *
 
 
+print('[Tai3D] Hint: LMB to orbit, MMB to move, scroll to zoom')
+
+
 class Control:
     def __init__(self, gui, fov=60):
         self.gui = gui
@@ -48,13 +51,10 @@ class Control:
         self.scale *= pow(1.12, delta)
 
     def on_lmb_drag(self, delta, origin):
-        pass
+        self.on_orbit(delta, origin)
 
     def on_mmb_drag(self, delta, origin):
-        if self.gui.is_pressed(self.gui.SHIFT):
-            self.on_pan(delta, origin)
-        else:
-            self.on_orbit(delta, origin)
+        self.on_pan(delta, origin)
 
     def on_rmb_drag(self, delta, origin):
         pass
@@ -78,7 +78,7 @@ class Control:
 
     def process(self, e):
         if e.type == self.gui.PRESS:
-            if e.key == 'o':
+            if e.key == self.gui.TAB:
                 if self.fov == 0:
                     self.fov = 60
                 else:
