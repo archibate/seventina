@@ -1,6 +1,6 @@
 from .engine import Engine
-from .shader import Shader
-from .camera import Camera, lookat
+from .shader import PositionShader as Shader
+from .camera import Camera
 from .control import Control
 from .assimp import readobj
 import taichi as ti
@@ -8,36 +8,31 @@ import numpy as np
 import ezprof
 
 engine = Engine()
-shader = Shader()
-camera = Camera()
-o = readobj('assets/monkey.obj', 'xyZ')
-verts, faces = o['v'], o['f'][:, :, 0]
+
 img = ti.Vector.field(3, float, engine.res)
+shader = Shader(img)
+camera = Camera()
+
+o = readobj('assets/monkey.obj', 'xZy')
+verts, faces = o['v'], o['f'][:, :, 0]
 
 gui = ti.GUI('monkey', engine.res)
 ctl = Control(gui)
 
-with ezprof.scope('set_mesh'):
-    engine.set_mesh(verts, faces)
+engine.set_mesh(verts, faces)
 
 while gui.running:
-    with ezprof.scope('control'):
-        ctl.update()
-        camera.view = ctl.make_view()
+    ctl.update()
+    camera.view = ctl.make_view()
 
-    with ezprof.scope('set_camera'):
-        engine.set_camera(camera)
+    engine.set_camera(camera)
 
-    with ezprof.scope('clear'):
-        img.fill(0)
-        engine.clear_depth()
+    img.fill(0)
+    engine.clear_depth()
 
-    with ezprof.scope('render'):
-        engine.render(img, shader)
+    engine.render(shader)
 
-    with ezprof.scope('set_image'):
-        gui.set_image(img)
-
+    gui.set_image(img)
     gui.show()
 
 

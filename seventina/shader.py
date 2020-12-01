@@ -3,15 +3,43 @@ from .utils import *
 
 @ti.data_oriented
 class MagentaShader:
+    def __init__(self, color):
+        self.color = color
+
     @ti.func
-    def shade_color(self, engine, pos, normal):
-        return V(1.0, 0.0, 1.0)
+    def shade_color(self, engine, P, f, pos, normal):
+        self.color[P] = V(1.0, 0.0, 1.0)
+
+
+@ti.data_oriented
+class PositionShader:
+    def __init__(self, color):
+        self.color = color
+
+    @ti.func
+    def shade_color(self, engine, P, f, pos, normal):
+        pos = mapply_pos(engine.L2W[None], pos)
+        self.color[P] = pos
+
+
+@ti.data_oriented
+class NormalShader:
+    def __init__(self, color):
+        self.color = color
+
+    @ti.func
+    def shade_color(self, engine, P, f, pos, normal):
+        normal = mapply_dir(engine.L2W[None], normal)
+        self.color[P] = normal * 0.5 + 0.5
 
 
 @ti.data_oriented
 class Shader:
+    def __init__(self, color):
+        self.color = color
+
     @ti.func
-    def shade_color(self, engine, pos, normal):
+    def shade_color(self, engine, P, f, pos, normal):
         pos = mapply_pos(engine.L2W[None], pos)
         normal = mapply_dir(engine.L2W[None], normal)
 
@@ -24,4 +52,5 @@ class Shader:
             light_dir /= light_dist
             color = lcolor * max(0, normal.dot(light_dir))
             final += color
-        return final
+
+        self.color[P] = final

@@ -3,8 +3,8 @@ from .utils import *
 
 class Camera:
     def __init__(self):
-        self.proj = np.eye(4)
-        self.view = np.eye(4)
+        self.proj = ortho()
+        self.view = lookat()
         self.model = np.eye(4)
 
 
@@ -15,7 +15,7 @@ def affine(lin, pos):
     return lin
 
 
-def lookat(pos=(0, 0, 0), back=(0, 0, 1), up=(0, 1, 0)):
+def lookat(pos=(0, 0, 0), back=(0, -1, 0), up=(0, 0, 1)):
     pos = np.array(pos, dtype=float)
     back = np.array(back, dtype=float)
     up = np.array(up, dtype=float)
@@ -34,8 +34,8 @@ def ortho(left=-1, right=1, bottom=-1, top=1, near=-1, far=1):
     lin = np.eye(4)
     lin[0, 0] = (right - left) / 2
     lin[1, 1] = (top - bottom) / 2
-    lin[2, 2] = (far - near) / 2
+    lin[2, 2] = (near - far) / 2
     lin[0, 3] = (right + left) / 2
     lin[1, 3] = (top + bottom) / 2
-    lin[2, 3] = (far + near) / 2
+    lin[2, 3] = (near + far) / 2
     return lin

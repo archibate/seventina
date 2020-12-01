@@ -5,9 +5,8 @@ class Control:
     def __init__(self, gui):
         self.gui = gui
         self.center = np.array([0, 0, 0], dtype=float)
-        self.up = np.array([0, 1, 0], dtype=float)
-        self.right = np.array([1, 0, 0], dtype=float)
-        self.back = np.array([0, 0, 1], dtype=float)
+        self.up = np.array([0, 0, 1], dtype=float)
+        self.back = np.array([0, -1, 0], dtype=float)
 
         self.mmb = None
 
@@ -16,22 +15,28 @@ class Control:
             self.process(e)
 
     def renormalize(self):
-        self.right = np.cross(self.up, self.back)
-        self.up = np.cross(self.back, self.right)
+        right = np.cross(self.up, self.back)
+        self.up = np.cross(self.back, right)
 
         self.back /= np.linalg.norm(self.back)
-        self.right /= np.linalg.norm(self.right)
         self.up /= np.linalg.norm(self.up)
 
     def on_mmb_drag(self, delta, origin):
-        delta *= 4
+        delta_phi = delta[0] * ti.pi
+        delta_theta = delta[1] * ti.pi
+        pos = self.back
+        radius = np.linalg.norm(pos)
+        theta = np.arccos(pos[2] / radius)
+        phi = np.arctan2(pos[1], pos[0])
 
-        self.back += self.right * delta[0] + self.up * delta[1]
-        self.right += -self.back * delta[0]
-        self.up += -self.back * delta[1]
+        theta = np.clip(theta + delta_theta, 0, ti.pi)
+        phi -= delta_phi
 
-        self.up[0] = 0
-        self.renormalize()
+        pos[0] = radius * np.sin(theta) * np.cos(phi)
+        pos[1] = radius * np.sin(theta) * np.sin(phi)
+        pos[2] = radius * np.cos(theta)
+
+        print(self.back, self.up)
 
     def make_view(self):
         from .camera import lookat

@@ -58,6 +58,7 @@ class Engine:
             self.nlights[None] = 1
             self.lights[0] = [0, 0, 1, 0]
             self.L2V[None] = ti.Matrix.identity(float, 4)
+            self.L2V[None][2, 2] = -1
             self.L2W[None] = ti.Matrix.identity(float, 4)
             for i in self.lights:
                 self.light_color[i] = [1, 1, 1]
@@ -73,23 +74,23 @@ class Engine:
         return (p.xy * 0.5 + 0.5) * self.res
 
     @ti.kernel
-    def render(self, color: ti.template(), shader: ti.template()):
+    def render(self, shader: ti.template()):
         for f in ti.smart(self.get_faces_range()):
-            A, B, C = self.get_face_vertices(f)
-            A, B, C = [self.to_viewspace(p) for p in [A, B, C]]
-            a, b, c = [self.to_viewport(p) for p in [A, B, C]]
+            Al, Bl, Cl = self.get_face_vertices(f)
+            Av, Bv, Cv = [self.to_viewspace(p) for p in [Al, Bl, Cl]]
+            a, b, c = [self.to_viewport(p) for p in [Av, Bv, Cv]]
             n = (b - a).cross(c - a)
             if n <= 0:
                 continue
 
-            wei_factor = 1 / V(*[mapply(self.L2V[None], p, 1)[1] for p in [A, B, C]])
+            wei_factor = 1 / V(*[mapply(self.L2V[None], p, 1)[1] for p in [Al, Bl, Cl]])
             for pos, wei in ti.smart(self.draw_trip(a, b, c)):
                 P = int(pos)
-                depth = wei.x * A.z + wei.y * B.z + wei.z * C.z
+                depth = wei.x * Av.z + wei.y * Bv.z + wei.z * Cv.z
                 if ti.atomic_min(self.depth[P], depth) > depth:
                     wei *= wei_factor
                     wei /= wei.x + wei.y + wei.z
-                    color[P] = self.interpolate(shader, wei, A, B, C)
+                    self.interpolate(shader, P, f, wei, Al, Bl, Cl)
 
     @ti.kernel
     def clear_depth(self):
@@ -97,10 +98,10 @@ class Engine:
             self.depth[P] = 1e6
 
     @ti.func
-    def interpolate(self, shader: ti.template(), wei, A, B, C):
+    def interpolate(self, shader: ti.template(), P, f, wei, A, B, C):
         pos = wei.x * A + wei.y * B + wei.z * C
         normal = (B - A).cross(C - A).normalized()
-        return shader.shade_color(self, pos, normal)
+        shader.shade_color(self, P, f, pos, normal)
 
     @ti.func
     def get_faces_range(self):

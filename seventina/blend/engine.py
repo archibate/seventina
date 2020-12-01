@@ -51,8 +51,9 @@ class BlenderEngine(Engine):
             bpy.context.scene.seventina_max_lights)
         self.output = OutputPixelConverter()
         self.cache = IDCache()
-        self.shader = Shader()
+
         self.color = ti.Vector.field(3, float, self.res)
+        self.shader = Shader(self.color)
 
         self.W2V_np = None
 
@@ -100,7 +101,7 @@ class BlenderEngine(Engine):
         verts, faces = self.cache.lookup(blender_get_object_mesh, object)
 
         self.set_mesh(verts, faces)
-        self.render(self.color, self.shader)
+        self.render(self.shader)
 
     def update_region_data(self, region3d):
         self.W2V_np = np.array(region3d.perspective_matrix)
