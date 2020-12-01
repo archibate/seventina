@@ -27,19 +27,29 @@ class OutputPixelConverter:
     @ti.kernel
     def dump(self, img: ti.template(), use_bilerp: ti.template(),
             out: ti.ext_arr(), width: int, height: int):
-        for i, j in ti.ndrange(width, height):
-            r, g, b = 0., 0., 0.
-            if ti.static(use_bilerp):
-                scale = ti.Vector(img.shape) / ti.Vector([width, height])
-                pos = ti.Vector([i, j]) * scale
-                r, g, b = self.cook(bilerp(img, pos))
-            else:
-                r, g, b = self.cook(img[i, j])
-            base = (j * width + i) * 4
-            out[base + 0] = r
-            out[base + 1] = g
-            out[base + 2] = b
-            out[base + 3] = 1
+        for ii, jj in ti.ndrange(img.shape[0], img.shape[1]):
+            j = jj
+            while True:
+                if j >= height:
+                    break
+                i = ii
+                while True:
+                    if i >= width:
+                        break
+                    r, g, b = 0., 0., 0.
+                    if ti.static(use_bilerp):
+                        scale = ti.Vector(img.shape) / ti.Vector([width, height])
+                        pos = ti.Vector([i, j]) * scale
+                        r, g, b = self.cook(bilerp(img, pos))
+                    else:
+                        r, g, b = self.cook(img[i, j])
+                    base = (j * width + i) * 4
+                    out[base + 0] = r
+                    out[base + 1] = g
+                    out[base + 2] = b
+                    out[base + 3] = 1
+                    i += img.shape[0]
+                j += img.shape[1]
 
 
 class BlenderEngine(Engine):

@@ -69,6 +69,7 @@ class TaichiWorker:
         pass
 
 
+
 def init_engine():
     import taichi as ti
     backend = getattr(ti, bpy.context.scene.seventina_backend.lower())
@@ -118,7 +119,7 @@ worker = None
 
 def register():
     global worker
-    worker = TaichiWorker()
+    worker = TaichiWorkerMT()
 
 
 def unregister():
