@@ -2,14 +2,14 @@ from .utils import *
 
 
 class Control:
-    def __init__(self, gui):
+    def __init__(self, gui, fov=60):
         self.gui = gui
         self.center = np.array([0, 0, 0], dtype=float)
         self.up = np.array([0, 0, 1], dtype=float)
         self.back = np.array([0, -1, 0], dtype=float)
         self.dist = 3
         self.scale = 1.0
-        self.is_ortho = False
+        self.fov = fov
 
         self.lmb = None
         self.mmb = None
@@ -67,13 +67,14 @@ class Control:
 
         from .camera import lookat, ortho, perspective, scale
 
-        if self.is_ortho:
+        if self.fov == 0:
             camera.view = lookat(self.center, self.back, self.up, self.dist)
             camera.proj = scale(self.scale) @ ortho()
         else:
             camera.view = lookat(
                     self.center, self.back, self.up, self.dist / self.scale)
-            camera.proj = perspective()
+            aspect = self.gui.res[0] / self.gui.res[1]
+            camera.proj = perspective(self.fov, aspect)
 
     def process(self, e):
         if e.key == self.gui.ESCAPE:

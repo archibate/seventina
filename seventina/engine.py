@@ -63,7 +63,7 @@ class Engine:
             for i in self.lights:
                 self.light_color[i] = [1, 1, 1]
             for i, j in self.depth:
-                self.depth[i, j] = 1e6
+                self.depth[i, j] = 1
 
     @ti.func
     def to_viewspace(self, p):
@@ -95,7 +95,7 @@ class Engine:
     @ti.kernel
     def clear_depth(self):
         for P in ti.grouped(self.depth):
-            self.depth[P] = 1e6
+            self.depth[P] = 1
 
     @ti.func
     def interpolate(self, shader: ti.template(), P, f, wei, A, B, C):

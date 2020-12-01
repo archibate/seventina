@@ -7,9 +7,6 @@ import taichi as ti
 import numpy as np
 import ezprof
 
-#print(frustum(-1, 1, -1, 1, 1, 2))
-#exit(1)
-
 engine = Engine()
 
 img = ti.Vector.field(3, float, engine.res)
