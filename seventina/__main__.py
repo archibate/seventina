@@ -12,21 +12,16 @@ shader = Shader()
 camera = Camera()
 o = readobj('assets/monkey.obj', 'xyZ')
 verts, faces = o['v'], o['f'][:, :, 0]
-@ti.func
-def _():
-    for i in range(len(faces)):
-        yield i
-engine.get_faces_range = _
-
 img = ti.Vector.field(3, float, engine.res)
 
 gui = ti.GUI('monkey', engine.res)
+ctl = Control(gui)
+
 with ezprof.scope('set_mesh'):
     engine.set_mesh(verts, faces)
 
 while gui.running:
     with ezprof.scope('control'):
-        ctl = Control(gui)
         ctl.update()
         camera.view = ctl.make_view()
 

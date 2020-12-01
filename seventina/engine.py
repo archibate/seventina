@@ -73,9 +73,7 @@ class Engine:
         return (p.xy * 0.5 + 0.5) * self.res
 
     @ti.kernel
-    def raster(self):
-        for i, j in self.occup:
-            self.occup[i, j] = 0
+    def render(self, color: ti.template(), shader: ti.template()):
         for f in ti.smart(self.get_faces_range()):
             A, B, C = self.get_face_vertices(f)
             A, B, C = [self.to_viewspace(p) for p in [A, B, C]]
@@ -84,33 +82,14 @@ class Engine:
             if n <= 0:
                 continue
 
+            wei_factor = 1 / V(*[mapply(self.L2V[None], p, 1)[1] for p in [A, B, C]])
             for pos, wei in ti.smart(self.draw_trip(a, b, c)):
                 P = int(pos)
                 depth = wei.x * A.z + wei.y * B.z + wei.z * C.z
                 if ti.atomic_min(self.depth[P], depth) > depth:
-                    self.occup[P] = f + 1
-
-    @ti.kernel
-    def paint(self, color: ti.template(), shader: ti.template()):
-        for P in ti.grouped(self.occup):
-            f = self.occup[P] - 1
-            if f == -1:
-                continue
-
-            A, B, C = self.get_face_vertices(f)
-            a, b, c = [self.to_viewport(self.to_viewspace(p)) for p in [A, B, C]]
-            n = (b - a).cross(c - a)
-            w_bc = (P - b).cross(b - c) / n
-            w_ca = (P - c).cross(c - a) / n
-            wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
-
-            wei /= V(*[mapply(self.L2V[None], p, 1)[1] for p in [A, B, C]])
-            wei /= wei.x + wei.y + wei.z
-            color[P] = self.interpolate(shader, wei, A, B, C)
-
-    def render(self, color, shader):
-        self.raster()
-        self.paint(color, shader)
+                    wei *= wei_factor
+                    wei /= wei.x + wei.y + wei.z
+                    color[P] = self.interpolate(shader, wei, A, B, C)
 
     @ti.kernel
     def clear_depth(self):
