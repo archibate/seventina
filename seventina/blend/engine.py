@@ -1,8 +1,9 @@
 import bpy
 
-from ..utils import *
-from ..engine import Engine
-from ..shader import Shader
+from ..common import *
+from ..core.engine import Engine
+from ..core.shader import Shader
+from ..core.trans import Trans
 from .cache import IDCache
 
 
@@ -48,12 +49,14 @@ class BlenderEngine(Engine):
             bpy.context.scene.seventina_resolution_y),
             bpy.context.scene.seventina_max_verts,
             bpy.context.scene.seventina_max_faces,
-            bpy.context.scene.seventina_max_lights)
+            bpy.context.scene.seventina_max_lights,
+            bpy.context.scene.seventina_culling)
         self.output = OutputPixelConverter()
         self.cache = IDCache()
 
         self.color = ti.Vector.field(3, float, self.res)
         self.shader = Shader(self.color)
+        self.trans = Trans()
 
     def render_scene(self):
         self.clear_depth()
@@ -97,6 +100,7 @@ class BlenderEngine(Engine):
         verts, faces = self.cache.lookup(blender_get_object_mesh, object)
 
         self.set_mesh(verts, faces)
+        self.set_trans(self.trans)
         self.render(self.shader)
 
     def update_region_data(self, region3d):

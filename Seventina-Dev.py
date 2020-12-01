@@ -48,20 +48,23 @@ registered = False
 
 
 def register():
+    print('Seventina-Dev register...')
     import seventina
-    assert seventina.__spec__ is not None
     seventina.register()
 
     global registered
     registered = True
+    print('...register done')
 
 
 def unregister():
+    print('Seventina-Dev unregister...')
     import seventina
     seventina.unregister()
 
     global registered
     registered = False
+    print('...unregister done')
 
 
 def reload():

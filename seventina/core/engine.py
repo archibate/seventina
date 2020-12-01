@@ -36,7 +36,9 @@ class Engine:
             if all(wei >= 0):
                 yield pos, wei
 
-    def __init__(self, res=512, maxverts=65536, maxfaces=65536, maxlights=16):
+    def __init__(self, res=512,
+            maxverts=65536, maxfaces=65536, maxlights=16,
+            culling=True, clipping=False):
         self.res = tovector((res, res) if isinstance(res, int) else res)
         self.occup = ti.field(int, self.res)
         self.depth = ti.field(float, self.res)
@@ -52,8 +54,8 @@ class Engine:
         self.light_color = ti.Vector.field(3, float, maxlights)
         self.nlights = ti.field(int, ())
 
-        self.clipping = True
-        self.culling = False
+        self.culling = culling
+        self.clipping = clipping
 
         @ti.materialize_callback
         @ti.kernel
