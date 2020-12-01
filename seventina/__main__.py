@@ -7,11 +7,11 @@ from .util.control import Control
 from .util.assimp import readobj
 import taichi as ti
 import numpy as np
-import ezprof
 
-ti.init(ti.gpu)
+ti.init(ti.opengl)
 
-engine = Engine((1024, 768))
+engine = Engine()
+
 environ = Environ()
 material = CookTorrance(roughness=0.1)
 
@@ -19,7 +19,7 @@ img = ti.Vector.field(3, float, engine.res)
 shader = Shader(img, environ, material)
 trans = Trans()
 
-o = readobj('assets/monkey.obj', 'xZy')
+o = readobj('assets/monkey.obj')
 verts, faces = o['v'], o['f'][:, :, 0]
 
 gui = ti.GUI('monkey', engine.res, fast_gui=True)
@@ -38,6 +38,3 @@ while gui.running:
 
     gui.set_image(img)
     gui.show()
-
-
-ezprof.show()

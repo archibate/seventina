@@ -61,6 +61,8 @@ class BlinnPhong(Material):
     def __init__(self, **kwargs):
         self.shineness = ti.field(float, ())
 
+        kwargs.setdefault('shineness', 10)
+
         super().__init__(**kwargs)
 
     @ti.func
