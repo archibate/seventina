@@ -80,6 +80,10 @@ class Engine:
             A, B, C = self.get_face_vertices(f)
             A, B, C = [self.to_viewspace(p) for p in [A, B, C]]
             a, b, c = [self.to_viewport(p) for p in [A, B, C]]
+            n = (b - a).cross(c - a)
+            if n <= 0:
+                continue
+
             for pos, wei in ti.smart(self.draw_trip(a, b, c)):
                 P = int(pos)
                 depth = wei.x * A.z + wei.y * B.z + wei.z * C.z
@@ -104,14 +108,14 @@ class Engine:
             wei /= wei.x + wei.y + wei.z
             color[P] = self.interpolate(shader, wei, A, B, C)
 
+    def render(self, color, shader):
+        self.raster()
+        self.paint(color, shader)
+
     @ti.kernel
     def clear_depth(self):
         for P in ti.grouped(self.depth):
             self.depth[P] = 1e6
-
-    def render(self, color, shader):
-        self.raster()
-        self.paint(color, shader)
 
     @ti.func
     def interpolate(self, shader: ti.template(), wei, A, B, C):
