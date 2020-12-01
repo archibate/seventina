@@ -119,7 +119,7 @@ worker = None
 
 def register():
     global worker
-    worker = TaichiWorkerMT()
+    worker = TaichiWorker()
 
 
 def unregister():
