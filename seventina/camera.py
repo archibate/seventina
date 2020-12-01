@@ -1,7 +1,6 @@
 from .utils import *
 
 
-@ti.data_oriented
 class Camera:
     def __init__(self):
         self.proj = np.eye(4)
@@ -28,7 +27,8 @@ def lookat(pos=(0, 0, 0), back=(0, 0, 1), up=(0, 1, 0)):
     up = np.cross(right, fwd)
 
     lin = np.stack([right, up, -fwd])
-    return affine(lin, pos + back)
+    return affine(lin, -pos)
+
 
 def ortho(left=-1, right=1, bottom=-1, top=1, near=-1, far=1):
     lin = np.eye(4)
