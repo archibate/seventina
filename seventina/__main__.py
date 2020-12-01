@@ -1,11 +1,14 @@
 from .engine import Engine
-from .shader import PositionShader as Shader
-from .camera import Camera
+from .shader import Shader
+from .camera import Camera, frustum
 from .control import Control
 from .assimp import readobj
 import taichi as ti
 import numpy as np
 import ezprof
+
+#print(frustum(-1, 1, -1, 1, 1, 2))
+#exit(1)
 
 engine = Engine()
 
@@ -22,9 +25,7 @@ ctl = Control(gui)
 engine.set_mesh(verts, faces)
 
 while gui.running:
-    ctl.update()
-    camera.view = ctl.make_view()
-
+    ctl.apply(camera)
     engine.set_camera(camera)
 
     img.fill(0)

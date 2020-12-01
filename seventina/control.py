@@ -7,21 +7,29 @@ class Control:
         self.center = np.array([0, 0, 0], dtype=float)
         self.up = np.array([0, 0, 1], dtype=float)
         self.back = np.array([0, -1, 0], dtype=float)
+        self.dist = 3
+        self.scale = 1.0
+        self.is_ortho = False
 
+        self.lmb = None
         self.mmb = None
+        self.rmb = None
 
     def update(self):
         for e in self.gui.get_events():
             self.process(e)
 
-    def renormalize(self):
+    def on_pan(self, delta, origin):
         right = np.cross(self.up, self.back)
-        self.up = np.cross(self.back, right)
+        up = np.cross(self.back, right)
 
-        self.back /= np.linalg.norm(self.back)
-        self.up /= np.linalg.norm(self.up)
+        right /= np.linalg.norm(right)
+        up /= np.linalg.norm(up)
 
-    def on_mmb_drag(self, delta, origin):
+        delta *= 2
+        self.center -= right * delta[0] + up * delta[1]
+
+    def on_orbit(self, delta, origin):
         delta_phi = delta[0] * ti.pi
         delta_theta = delta[1] * ti.pi
         pos = self.back
@@ -36,23 +44,71 @@ class Control:
         pos[1] = radius * np.sin(theta) * np.sin(phi)
         pos[2] = radius * np.cos(theta)
 
-        print(self.back, self.up)
+    def on_zoom(self, delta, origin):
+        self.scale *= pow(1.12, delta)
 
-    def make_view(self):
-        from .camera import lookat
-        return lookat(pos=self.center, back=self.back, up=self.up)
+    def on_lmb_drag(self, delta, origin):
+        pass
+
+    def on_mmb_drag(self, delta, origin):
+        if self.gui.is_pressed(self.gui.SHIFT):
+            self.on_pan(delta, origin)
+        else:
+            self.on_orbit(delta, origin)
+
+    def on_rmb_drag(self, delta, origin):
+        pass
+
+    def on_wheel(self, delta, origin):
+        self.on_zoom(delta, origin)
+
+    def apply(self, camera):
+        self.update()
+
+        from .camera import lookat, ortho, perspective, scale
+
+        if self.is_ortho:
+            camera.view = lookat(self.center, self.back, self.up, self.dist)
+            camera.proj = scale(self.scale) @ ortho()
+        else:
+            camera.view = lookat(
+                    self.center, self.back, self.up, self.dist / self.scale)
+            camera.proj = perspective()
 
     def process(self, e):
         if e.key == self.gui.ESCAPE:
             self.gui.running = False
+        elif e.key == self.gui.LMB:
+            if e.type == self.gui.PRESS:
+                self.lmb = np.array(e.pos)
+            else:
+                self.lmb = None
         elif e.key == self.gui.MMB:
             if e.type == self.gui.PRESS:
                 self.mmb = np.array(e.pos)
             else:
                 self.mmb = None
+        elif e.key == self.gui.RMB:
+            if e.type == self.gui.PRESS:
+                self.rmb = np.array(e.pos)
+            else:
+                self.rmb = None
         elif e.key == self.gui.MOVE:
+            if self.lmb is not None:
+                new_lmb = np.array(e.pos)
+                delta_lmb = new_lmb - self.lmb
+                self.on_lmb_drag(delta_lmb, self.lmb)
+                self.lmb = new_lmb
             if self.mmb is not None:
                 new_mmb = np.array(e.pos)
                 delta_mmb = new_mmb - self.mmb
                 self.on_mmb_drag(delta_mmb, self.mmb)
                 self.mmb = new_mmb
+            if self.rmb is not None:
+                new_rmb = np.array(e.pos)
+                delta_rmb = new_rmb - self.rmb
+                self.on_rmb_drag(delta_rmb, self.rmb)
+                self.rmb = new_rmb
+        elif e.key == self.gui.WHEEL:
+            delta = e.delta[1] / 120
+            self.on_wheel(delta, np.array(e.pos))

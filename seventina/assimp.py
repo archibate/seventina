@@ -14,7 +14,7 @@ def _tri_append(faces, indices):
         assert False, len(indices)
 
 
-def readobj(path, orient='-xyz', scale=None):
+def readobj(path, orient='xZy', scale=None):
     v = []
     vt = []
     vn = []
