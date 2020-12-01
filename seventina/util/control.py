@@ -1,4 +1,4 @@
-from .utils import *
+from ..common import *
 
 
 print('[Tai3D] Hint: LMB to orbit, MMB to move, scroll to zoom')
@@ -18,9 +18,9 @@ class Control:
         self.mmb = None
         self.rmb = None
 
-    def update(self):
+    def process_events(self):
         for e in self.gui.get_events():
-            self.process(e)
+            self.on_event(e)
 
     def on_pan(self, delta, origin):
         right = np.cross(self.up, self.back)
@@ -62,21 +62,21 @@ class Control:
     def on_wheel(self, delta, origin):
         self.on_zoom(delta, origin)
 
-    def apply(self, camera):
-        self.update()
+    def get_trans(self, trans):
+        self.process_events()
 
-        from .camera import lookat, orthogonal, perspective
+        from ..core.trans import lookat, orthogonal, perspective
 
         aspect = self.gui.res[0] / self.gui.res[1]
         if self.fov == 0:
-            camera.view = lookat(self.center, self.back, self.up, self.dist)
-            camera.proj = orthogonal(1 / self.scale, aspect)
+            trans.view = lookat(self.center, self.back, self.up, self.dist)
+            trans.proj = orthogonal(1 / self.scale, aspect)
         else:
-            camera.view = lookat(
+            trans.view = lookat(
                     self.center, self.back, self.up, self.dist / self.scale)
-            camera.proj = perspective(self.fov, aspect)
+            trans.proj = perspective(self.fov, aspect)
 
-    def process(self, e):
+    def on_event(self, e):
         if e.type == self.gui.PRESS:
             if e.key == self.gui.TAB:
                 if self.fov == 0:

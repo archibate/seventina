@@ -1,29 +1,31 @@
-from .engine import Engine
-from .shader import Shader
-from .camera import Camera
-from .control import Control
-from .assimp import readobj
+from .core.engine import Engine
+from .core.shader import Shader
+from .core.trans import Trans
+from .util.control import Control
+from .util.assimp import readobj
 import taichi as ti
 import numpy as np
 import ezprof
+
+ti.init(ti.gpu)
 
 engine = Engine((1024, 768))
 
 img = ti.Vector.field(3, float, engine.res)
 shader = Shader(img)
-camera = Camera()
+trans = Trans()
 
 o = readobj('assets/monkey.obj', 'xZy')
 verts, faces = o['v'], o['f'][:, :, 0]
 
-gui = ti.GUI('monkey', engine.res)
-ctl = Control(gui)
+gui = ti.GUI('monkey', engine.res, fast_gui=True)
+control = Control(gui)
 
 engine.set_mesh(verts, faces)
 
 while gui.running:
-    ctl.apply(camera)
-    engine.set_camera(camera)
+    control.get_trans(trans)
+    engine.set_trans(trans)
 
     img.fill(0)
     engine.clear_depth()

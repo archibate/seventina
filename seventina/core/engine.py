@@ -1,4 +1,4 @@
-from .utils import *
+from ..common import *
 
 
 @ti.data_oriented
@@ -162,8 +162,8 @@ class Engine:
             self.lights[i] = dir
             self.light_color[i] = color
 
-    def set_camera(self, camera):
-        L2W = camera.model
-        L2V = camera.proj @ camera.view @ camera.model
+    def set_trans(self, trans):
+        L2W = trans.model
+        L2V = trans.proj @ trans.view @ trans.model
         self.L2V.from_numpy(np.array(L2V, dtype=np.float32))
         self.L2W.from_numpy(np.array(L2W, dtype=np.float32))

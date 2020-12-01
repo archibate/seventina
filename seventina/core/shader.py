@@ -1,4 +1,4 @@
-from .utils import *
+from ..common import *
 
 
 @ti.data_oriented

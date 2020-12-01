@@ -1,7 +1,7 @@
-from .utils import *
+from ..common import *
 
 
-class Camera:
+class Trans:
     def __init__(self):
         self.proj = ortho()
         self.view = lookat()

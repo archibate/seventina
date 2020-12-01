@@ -55,8 +55,6 @@ class BlenderEngine(Engine):
         self.color = ti.Vector.field(3, float, self.res)
         self.shader = Shader(self.color)
 
-        self.W2V_np = None
-
     def render_scene(self):
         self.clear_depth()
         self.color.fill(0)
@@ -81,12 +79,12 @@ class BlenderEngine(Engine):
 
     def update_light(self, i, object):
         color = np.array(object.data.color) * object.data.energy / 1000
-        L2W = np.array(object.matrix_world)
+        model = np.array(object.matrix_world)
 
         if object.data.type == 'SUN':
-            dir = L2W @ np.array([0, 0, 1, 0])
+            dir = model @ np.array([0, 0, 1, 0])
         elif object.data.type == 'POINT':
-            dir = L2W @ np.array([0, 0, 0, 1])
+            dir = model @ np.array([0, 0, 0, 1])
         else:
             assert False, f'unsupported light type: {object.data.type}'
 
@@ -94,9 +92,7 @@ class BlenderEngine(Engine):
         self.light_color[i] = color.tolist()
 
     def render_object(self, object):
-        L2W = np.array(object.matrix_world)
-        self.L2W[None] = L2W.tolist()
-        self.L2V[None] = (self.W2V_np @ L2W).tolist()
+        self.trans.model = np.array(object.matrix_world)
 
         verts, faces = self.cache.lookup(blender_get_object_mesh, object)
 
@@ -104,17 +100,17 @@ class BlenderEngine(Engine):
         self.render(self.shader)
 
     def update_region_data(self, region3d):
-        self.W2V_np = np.array(region3d.perspective_matrix)
+        self.trans.proj = np.array(region3d.perspective_matrix)
+        self.trans.view = np.eye(4)
 
     def update_default_camera(self):
         camera = bpy.context.scene.camera
         render = bpy.context.scene.render
         depsgraph = bpy.context.evaluated_depsgraph_get()
-        proj = np.array(camera.calc_matrix_camera(depsgraph,
+        self.trans.proj = np.array(camera.calc_matrix_camera(depsgraph,
             x=render.resolution_x, y=render.resolution_y,
             scale_x=render.pixel_aspect_x, scale_y=render.pixel_aspect_y))
-        view = np.linalg.inv(np.array(camera.matrix_world))
-        self.W2V_np = proj @ view
+        self.trans.view = np.linalg.inv(np.array(camera.matrix_world))
 
     def render_pixels(self, pixels, width, height):
         self.render_scene()

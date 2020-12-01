@@ -15,11 +15,7 @@ __version__ = bl_info['version']
 __author__ = bl_info['author']
 
 
-registered = False
-
-
 def register():
-    from . import inject
     from . import blend
     blend.register()
 
@@ -27,11 +23,3 @@ def register():
 def unregister():
     from . import blend
     blend.unregister()
-
-
-__all__ = [
-    'engine',
-    'shader',
-    'assimp',
-    'utils',
-]
