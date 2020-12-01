@@ -1,5 +1,6 @@
 from .core.engine import Engine
 from .core.shader import Shader
+from .core.environ import Environ
 from .core.trans import Trans
 from .util.control import Control
 from .util.assimp import readobj
@@ -10,9 +11,10 @@ import ezprof
 ti.init(ti.gpu)
 
 engine = Engine((1024, 768))
+environ = Environ()
 
 img = ti.Vector.field(3, float, engine.res)
-shader = Shader(img)
+shader = Shader(img, environ)
 trans = Trans()
 
 o = readobj('assets/monkey.obj', 'xZy')

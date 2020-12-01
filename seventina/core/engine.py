@@ -36,8 +36,7 @@ class Engine:
             if all(wei >= 0):
                 yield pos, wei
 
-    def __init__(self, res=512,
-            maxverts=65536, maxfaces=65536, maxlights=16,
+    def __init__(self, res=512, maxverts=65536, maxfaces=65536,
             culling=True, clipping=False):
         self.res = tovector((res, res) if isinstance(res, int) else res)
         self.occup = ti.field(int, self.res)
@@ -50,23 +49,15 @@ class Engine:
         self.L2V = ti.Matrix.field(4, 4, float, ())
         self.L2W = ti.Matrix.field(4, 4, float, ())
 
-        self.lights = ti.Vector.field(4, float, maxlights)
-        self.light_color = ti.Vector.field(3, float, maxlights)
-        self.nlights = ti.field(int, ())
-
         self.culling = culling
         self.clipping = clipping
 
         @ti.materialize_callback
         @ti.kernel
         def init_engine():
-            self.nlights[None] = 1
-            self.lights[0] = [0, 0, 1, 0]
+            self.L2W[None] = ti.Matrix.identity(float, 4)
             self.L2V[None] = ti.Matrix.identity(float, 4)
             self.L2V[None][2, 2] = -1
-            self.L2W[None] = ti.Matrix.identity(float, 4)
-            for i in self.lights:
-                self.light_color[i] = [1, 1, 1]
 
         ti.materialize_callback(self.clear_depth)
 
@@ -128,15 +119,6 @@ class Engine:
         A, B, C = self.verts[face.x], self.verts[face.y], self.verts[face.z]
         return A, B, C
 
-    @ti.func
-    def get_lights_range(self):
-        for i in range(self.nlights[None]):
-            yield i
-
-    @ti.func
-    def get_light_data(self, l):
-        return self.lights[l], self.light_color[l]
-
     @ti.kernel
     def set_verts(self, verts: ti.ext_arr()):
         for i in range(verts.shape[0]):
@@ -157,12 +139,6 @@ class Engine:
                 f'please increase maxfaces to {len(faces)}'
         self.set_verts(verts)
         self.set_faces(faces)
-
-    def set_lights(self, lights):
-        self.nlights[None] = len(lights)
-        for i, (dir, color) in enumerate(lights):
-            self.lights[i] = dir
-            self.light_color[i] = color
 
     def set_trans(self, trans):
         L2W = trans.model
