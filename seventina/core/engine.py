@@ -48,6 +48,7 @@ class Engine:
 
         self.L2V = ti.Matrix.field(4, 4, float, ())
         self.L2W = ti.Matrix.field(4, 4, float, ())
+        self.C2L = ti.Matrix.field(4, 4, float, ())
 
         self.culling = culling
         self.clipping = clipping
@@ -55,6 +56,7 @@ class Engine:
         @ti.materialize_callback
         @ti.kernel
         def init_engine():
+            self.C2L[None] = ti.Matrix.identity(float, 4)
             self.L2W[None] = ti.Matrix.identity(float, 4)
             self.L2V[None] = ti.Matrix.identity(float, 4)
             self.L2V[None][2, 2] = -1
@@ -143,5 +145,7 @@ class Engine:
     def set_trans(self, trans):
         L2W = trans.model
         L2V = trans.proj @ trans.view @ trans.model
+        C2L = np.linalg.inv(trans.view @ trans.model)
         self.L2V.from_numpy(np.array(L2V, dtype=np.float32))
         self.L2W.from_numpy(np.array(L2W, dtype=np.float32))
+        self.C2L.from_numpy(np.array(C2L, dtype=np.float32))

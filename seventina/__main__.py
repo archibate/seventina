@@ -1,6 +1,7 @@
 from .core.engine import Engine
 from .core.shader import Shader
 from .core.environ import Environ
+from .core.material import CookTorrance
 from .core.trans import Trans
 from .util.control import Control
 from .util.assimp import readobj
@@ -12,9 +13,10 @@ ti.init(ti.gpu)
 
 engine = Engine((1024, 768))
 environ = Environ()
+material = CookTorrance(roughness=0.1)
 
 img = ti.Vector.field(3, float, engine.res)
-shader = Shader(img, environ)
+shader = Shader(img, environ, material)
 trans = Trans()
 
 o = readobj('assets/monkey.obj', 'xZy')

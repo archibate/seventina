@@ -45,23 +45,30 @@ class NormalShader:
 
 @ti.data_oriented
 class Shader:
-    def __init__(self, color, environ):
+    def __init__(self, color, environ, material):
         self.color = color
         self.environ = environ
+        self.material = material
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal):
+        camera_pos = mapply_pos(engine.C2L[None], V(0., 0., 0.))
+        view_dir = (camera_pos - pos).normalized()
+
         pos = mapply_pos(engine.L2W[None], pos)
         normal = mapply_dir(engine.L2W[None], normal)
 
-        final = V(0.0, 0.0, 0.0)
+        res = V(0.0, 0.0, 0.0)
+        res += self.environ.get_ambient_light_color()
         for l in ti.smart(self.environ.get_lights_range()):
             light, lcolor = self.environ.get_light_data(l)
             light_dir = light.xyz - pos * light.w
-            light_dist = light_dir.norm()
-            lcolor /= light_dist**2
-            light_dir /= light_dist
-            color = lcolor * max(0, normal.dot(light_dir))
-            final += color
+            cos_i = normal.dot(light_dir)
+            if cos_i > 0:
+                light_dist = light_dir.norm()
+                light_dir /= light_dist
+                lcolor /= light_dist**2
+                mcolor = self.material.brdf(normal, light_dir, view_dir)
+                res += cos_i * lcolor * mcolor
 
-        self.color[P] = final
+        self.color[P] = res

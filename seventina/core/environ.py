@@ -6,6 +6,7 @@ class Environ:
     def __init__(self, maxlights=16):
         self.lights = ti.Vector.field(4, float, maxlights)
         self.light_color = ti.Vector.field(3, float, maxlights)
+        self.ambient = ti.Vector.field(3, float, ())
         self.nlights = ti.field(int, ())
 
         @ti.materialize_callback
@@ -22,6 +23,9 @@ class Environ:
             self.lights[i] = dir
             self.light_color[i] = color
 
+    def set_ambient_light(self, color):
+        self.ambient[None] = np.array(color).tolist()
+
     @ti.func
     def get_lights_range(self):
         for i in range(self.nlights[None]):
@@ -30,3 +34,7 @@ class Environ:
     @ti.func
     def get_light_data(self, l):
         return self.lights[l], self.light_color[l]
+
+    @ti.func
+    def get_ambient_light_color(self):
+        return self.ambient[None]
