@@ -1,6 +1,6 @@
 from .engine import Engine
 from .shader import Shader
-from .camera import Camera, frustum
+from .camera import Camera
 from .control import Control
 from .assimp import readobj
 import taichi as ti
@@ -17,7 +17,7 @@ o = readobj('assets/monkey.obj', 'xZy')
 verts, faces = o['v'], o['f'][:, :, 0]
 
 gui = ti.GUI('monkey', engine.res)
-ctl = Control(gui)
+ctl = Control(gui, fov=0)
 
 engine.set_mesh(verts, faces)
 

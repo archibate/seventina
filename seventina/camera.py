@@ -30,7 +30,7 @@ def lookat(pos=(0, 0, 0), back=(0, -1, 0), up=(0, 0, 1), dist=3):
     return np.linalg.inv(affine(lin, (pos + back * dist)))
 
 
-def ortho(left=-1, right=1, bottom=-1, top=1, near=-1, far=1):
+def ortho(left=-1, right=1, bottom=-1, top=1, near=0, far=100):
     lin = np.eye(4)
     lin[0, 0] = 2 / (right - left)
     lin[1, 1] = 2 / (top - bottom)
@@ -52,6 +52,11 @@ def frustum(left=-1, right=1, bottom=-1, top=1, near=1, far=100):
     lin[3, 2] = -1
     lin[3, 3] = 0
     return lin
+
+
+def orthogonal(size=1, aspect=1, near=0, far=100):
+    ax, ay = size * aspect, size
+    return ortho(-ax, ax, -ay, ay, near, far)
 
 
 def perspective(fov=60, aspect=1, near=0.1, far=100):

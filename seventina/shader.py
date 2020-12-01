@@ -23,6 +23,16 @@ class PositionShader:
 
 
 @ti.data_oriented
+class DepthShader:
+    def __init__(self, color):
+        self.color = color
+
+    @ti.func
+    def shade_color(self, engine, P, f, pos, normal):
+        self.color[P] = engine.depth[P] / 4
+
+
+@ti.data_oriented
 class NormalShader:
     def __init__(self, color):
         self.color = color

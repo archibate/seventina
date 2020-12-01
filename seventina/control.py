@@ -27,7 +27,7 @@ class Control:
         up /= np.linalg.norm(up)
 
         delta *= 2
-        self.center -= right * delta[0] + up * delta[1]
+        self.center -= (right * delta[0] + up * delta[1]) / self.scale
 
     def on_orbit(self, delta, origin):
         delta_phi = delta[0] * ti.pi
@@ -65,21 +65,27 @@ class Control:
     def apply(self, camera):
         self.update()
 
-        from .camera import lookat, ortho, perspective, scale
+        from .camera import lookat, orthogonal, perspective
 
+        aspect = self.gui.res[0] / self.gui.res[1]
         if self.fov == 0:
             camera.view = lookat(self.center, self.back, self.up, self.dist)
-            camera.proj = scale(self.scale) @ ortho()
+            camera.proj = orthogonal(1 / self.scale, aspect)
         else:
             camera.view = lookat(
                     self.center, self.back, self.up, self.dist / self.scale)
-            aspect = self.gui.res[0] / self.gui.res[1]
             camera.proj = perspective(self.fov, aspect)
 
     def process(self, e):
-        if e.key == self.gui.ESCAPE:
-            self.gui.running = False
-        elif e.key == self.gui.LMB:
+        if e.type == self.gui.PRESS:
+            if e.key == 'o':
+                if self.fov == 0:
+                    self.fov = 60
+                else:
+                    self.fov = 0
+            elif e.key == self.gui.ESCAPE:
+                self.gui.running = False
+        if e.key == self.gui.LMB:
             if e.type == self.gui.PRESS:
                 self.lmb = np.array(e.pos)
             else:
