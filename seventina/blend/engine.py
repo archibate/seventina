@@ -64,7 +64,7 @@ class BlenderEngine(tina.Engine):
         self.color = ti.Vector.field(3, float, self.res)
 
         self.lighting = tina.Lighting(bpy.context.scene.seventina_max_lights)
-        self.material = tina.Material()
+        self.material = tina.CookTorrance()
         self.shader = tina.Shader(self.color, self.lighting, self.material)
         self.camera = tina.Camera()
 
@@ -98,7 +98,7 @@ class BlenderEngine(tina.Engine):
             dir = model @ np.array([0, 0, 1, 0])
         elif object.data.type == 'POINT':
             dir = model @ np.array([0, 0, 0, 1])
-            color /= 4 * np.pi
+            color /= 12
         else:
             assert False, f'unsupported light type: {object.data.type}'
 

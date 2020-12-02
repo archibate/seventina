@@ -29,7 +29,7 @@ class Engine:
         bcn = (b - c) / n
         can = (c - a) / n
         for i, j in ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1)):
-            pos = float(V(i, j))
+            pos = float(V(i, j)) + 0.5
             w_bc = (pos - b).cross(bcn)
             w_ca = (pos - c).cross(can)
             wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
@@ -114,12 +114,12 @@ class Engine:
         if ti.static(self.smoothing):
             An, Bn, Cn = self.get_face_normals(f)
             # TODO: actually we need to slerp normal?
-            normal = (wei.x * An + wei.y * Bn + wei.z * Cn).normalized()
+            normal = (wei.x * An + wei.y * Bn + wei.z * Cn)
             if ti.static(not self.culling):
                 if facing < 0:
                     normal = -normal
         else:
-            normal = (B - A).cross(C - A).normalized()
+            normal = (B - A).cross(C - A)  # let the shader normalize it
         shader.shade_color(self, P, f, pos, normal)
 
     @ti.func

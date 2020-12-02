@@ -39,7 +39,7 @@ class NormalShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal):
-        normal = mapply_dir(engine.L2W[None], normal)
+        normal = mapply_dir(engine.L2W[None], normal).normalized()
         self.color[P] = normal * 0.5 + 0.5
 
 
@@ -56,7 +56,7 @@ class SimpleShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal):
-        normal = mapply_dir(engine.L2V[None], normal)
+        normal = mapply_dir(engine.L2V[None], normal).normalized()
 
         self.color[P] = -normal.z
 
@@ -71,7 +71,7 @@ class Shader:
     @ti.func
     def shade_color(self, engine, P, f, pos, normal):
         pos = mapply_pos(engine.L2W[None], pos)
-        normal = mapply_dir(engine.L2W[None], normal)
+        normal = mapply_dir(engine.L2W[None], normal).normalized()
         view_dir = calc_view_dir(engine, pos)
 
         res = V(0.0, 0.0, 0.0)
@@ -83,7 +83,7 @@ class Shader:
             if cos_i > 0:
                 light_dist = light_dir.norm()
                 light_dir /= light_dist
-                lcolor /= light_dist**2
+                lcolor /= light_dist**3
                 mcolor = self.material.brdf(normal, light_dir, view_dir)
                 res += cos_i * lcolor * mcolor
 
