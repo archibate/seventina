@@ -23,3 +23,6 @@ def register():
 def unregister():
     from . import blend
     blend.unregister()
+
+
+from .bundle import tina

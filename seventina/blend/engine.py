@@ -2,6 +2,8 @@ import bpy
 
 from ..common import *
 from ..core.engine import Engine
+from ..core.environ import Environ
+from ..core.material import Material
 from ..core.shader import Shader
 from ..core.trans import Trans
 from .cache import IDCache
@@ -65,7 +67,10 @@ class BlenderEngine(Engine):
         self.cache = IDCache()
 
         self.color = ti.Vector.field(3, float, self.res)
-        self.shader = Shader(self.color)
+
+        self.environ = Environ()
+        self.material = CookTorrance()
+        self.shader = Shader(self.color, self.environ, self.material)
         self.trans = Trans()
 
     def render_scene(self):

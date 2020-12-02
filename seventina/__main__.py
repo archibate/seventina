@@ -1,29 +1,24 @@
-from .core.engine import Engine
-from .core.shader import Shader
-from .core.material import CookTorrance
-from .core.environ import Environ
-from .core.trans import Trans
-from .util.control import Control
-from .util.assimp import readobj
 import taichi as ti
 import numpy as np
 
+from seventina import tina
+
 ti.init(ti.opengl)
 
-engine = Engine(512)
-trans = Trans()
+engine = tina.Engine(512)
+trans = tina.Trans()
 
 img = ti.Vector.field(3, float, engine.res)
 
-environ = Environ()
-material = CookTorrance()
-shader = Shader(img, environ, material)
+environ = tina.Environ()
+material = tina.CookTorrance()
+shader = tina.Shader(img, environ, material)
 
-o = readobj('assets/sphere.obj')
+o = tina.readobj('assets/sphere.obj')
 verts = o['v'][o['f'][:, :, 0]]
 
 gui = ti.GUI('monkey', engine.res, fast_gui=True)
-control = Control(gui)
+control = tina.Control(gui)
 
 engine.set_face_verts(verts)
 
