@@ -14,6 +14,8 @@ bl_info = {
 __version__ = bl_info['version']
 __author__ = bl_info['author']
 
+print('[Tai3D] version', '.'.join(__version__))
+
 
 def register():
     from . import blend

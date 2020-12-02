@@ -11,7 +11,7 @@ setattr(ti, 'static', lambda x, *xs: [x] + list(xs) if xs else x) or setattr(
         ) or setattr(ti, 'tau', __import__('math').tau) or setattr(ti, 'GUI',
         (lambda f: __import__('functools').wraps(f)(lambda x='Tina', y=512,
         *z, **w: f(x, tuple(y) if isinstance(y, ti.Matrix) else y, *z, **w)
-        ))(ti.GUI)) or print('[Tai3D] version 0.0.0, thank for your support!')
+        ))(ti.GUI))
 
 
 ti.smart = lambda x: x

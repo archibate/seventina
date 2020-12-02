@@ -14,13 +14,11 @@ lighting = tina.Lighting()
 material = tina.CookTorrance()
 shader = tina.Shader(img, lighting, material)
 
-obj = tina.readobj('assets/sphere.obj')
+obj = tina.readobj('assets/monkey.obj')
 verts = obj['v'][obj['f'][:, :, 0]]
 
 gui = ti.GUI('monkey', engine.res, fast_gui=True)
 control = tina.Control(gui)
-
-engine.set_face_verts(verts)
 
 while gui.running:
     control.get_camera(camera)
@@ -29,6 +27,7 @@ while gui.running:
     img.fill(0)
     engine.clear_depth()
 
+    engine.set_face_verts(verts)
     engine.render(shader)
 
     gui.set_image(img)
