@@ -2,7 +2,7 @@ from ..common import *
 
 
 @ti.data_oriented
-class Environ:
+class Lighting:
     def __init__(self, maxlights=16):
         self.lights = ti.Vector.field(4, float, maxlights)
         self.light_color = ti.Vector.field(3, float, maxlights)

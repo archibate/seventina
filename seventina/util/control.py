@@ -62,19 +62,19 @@ class Control:
     def on_wheel(self, delta, origin):
         self.on_zoom(delta, origin)
 
-    def get_trans(self, trans):
+    def get_camera(self, camera):
         self.process_events()
 
-        from ..core.trans import lookat, orthogonal, perspective
+        from ..core.camera import lookat, orthogonal, perspective
 
         aspect = self.gui.res[0] / self.gui.res[1]
         if self.fov == 0:
-            trans.view = lookat(self.center, self.back, self.up, self.dist)
-            trans.proj = orthogonal(1 / self.scale, aspect)
+            camera.view = lookat(self.center, self.back, self.up, self.dist)
+            camera.proj = orthogonal(1 / self.scale, aspect)
         else:
-            trans.view = lookat(
+            camera.view = lookat(
                     self.center, self.back, self.up, self.dist / self.scale)
-            trans.proj = perspective(self.fov, aspect)
+            camera.proj = perspective(self.fov, aspect)
 
     def on_event(self, e):
         if e.type == self.gui.PRESS:

@@ -152,10 +152,10 @@ class Engine:
                 for l in ti.static(range(3)):
                     self.norms[i, k][l] = norms[i, k, l]
 
-    def set_trans(self, trans):
-        L2W = trans.model
-        L2V = trans.proj @ trans.view @ trans.model
-        V2W = np.linalg.inv(trans.proj @ trans.view)
+    def set_camera(self, camera):
+        L2W = camera.model
+        L2V = camera.proj @ camera.view @ camera.model
+        V2W = np.linalg.inv(camera.proj @ camera.view)
         self.L2V.from_numpy(np.array(L2V, dtype=np.float32))
         self.L2W.from_numpy(np.array(L2W, dtype=np.float32))
         self.V2W.from_numpy(np.array(V2W, dtype=np.float32))

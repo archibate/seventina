@@ -5,17 +5,17 @@ from seventina import tina
 
 ti.init(ti.opengl)
 
-engine = tina.Engine(512)
-trans = tina.Trans()
+engine = tina.Engine((1024, 768))
+camera = tina.Camera()
 
 img = ti.Vector.field(3, float, engine.res)
 
-environ = tina.Environ()
+lighting = tina.Lighting()
 material = tina.CookTorrance()
-shader = tina.Shader(img, environ, material)
+shader = tina.Shader(img, lighting, material)
 
-o = tina.readobj('assets/sphere.obj')
-verts = o['v'][o['f'][:, :, 0]]
+obj = tina.readobj('assets/sphere.obj')
+verts = obj['v'][obj['f'][:, :, 0]]
 
 gui = ti.GUI('monkey', engine.res, fast_gui=True)
 control = tina.Control(gui)
@@ -23,8 +23,8 @@ control = tina.Control(gui)
 engine.set_face_verts(verts)
 
 while gui.running:
-    control.get_trans(trans)
-    engine.set_trans(trans)
+    control.get_camera(camera)
+    engine.set_camera(camera)
 
     img.fill(0)
     engine.clear_depth()

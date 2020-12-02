@@ -63,10 +63,10 @@ class BlenderEngine(tina.Engine):
 
         self.color = ti.Vector.field(3, float, self.res)
 
-        self.environ = tina.Environ(bpy.context.scene.seventina_max_lights)
+        self.lighting = tina.Lighting(bpy.context.scene.seventina_max_lights)
         self.material = tina.CookTorrance()
-        self.shader = tina.Shader(self.color, self.environ, self.material)
-        self.trans = tina.Trans()
+        self.shader = tina.Shader(self.color, self.lighting, self.material)
+        self.camera = tina.Camera()
 
     def render_scene(self):
         self.clear_depth()
@@ -83,7 +83,7 @@ class BlenderEngine(tina.Engine):
             if object.type == 'MESH':
                 meshes.append(object)
 
-        self.environ.nlights[None] = len(lights)
+        self.lighting.nlights[None] = len(lights)
         for i, object in enumerate(lights):
             self.update_light(i, object)
 
@@ -101,12 +101,12 @@ class BlenderEngine(tina.Engine):
         else:
             assert False, f'unsupported light type: {object.data.type}'
 
-        self.environ.lights[i] = dir.tolist()
-        self.environ.light_color[i] = color.tolist()
+        self.lighting.lights[i] = dir.tolist()
+        self.lighting.light_color[i] = color.tolist()
 
     def render_object(self, object):
-        self.trans.model = np.array(object.matrix_world)
-        self.set_trans(self.trans)
+        self.camera.model = np.array(object.matrix_world)
+        self.set_trans(self.camera)
 
         verts = self.cache.lookup(blender_get_object_mesh, object)
 
@@ -115,18 +115,18 @@ class BlenderEngine(tina.Engine):
 
     def update_region_data(self, region3d):
         pers = np.array(region3d.perspective_matrix)
-        self.trans.view = np.array(region3d.view_matrix)
-        self.trans.proj = pers @ np.linalg.inv(self.trans.view)
+        self.camera.view = np.array(region3d.view_matrix)
+        self.camera.proj = pers @ np.linalg.inv(self.camera.view)
 
     def update_default_camera(self):
         camera = bpy.context.scene.camera
         render = bpy.context.scene.render
         depsgraph = bpy.context.evaluated_depsgraph_get()
         scale = render.resolution_percentage / 100.0
-        self.trans.proj = np.array(camera.calc_matrix_camera(depsgraph,
+        self.camera.proj = np.array(camera.calc_matrix_camera(depsgraph,
             x=render.resolution_x * scale, y=render.resolution_y * scale,
             scale_x=render.pixel_aspect_x, scale_y=render.pixel_aspect_y))
-        self.trans.view = np.linalg.inv(np.array(camera.matrix_world))
+        self.camera.view = np.linalg.inv(np.array(camera.matrix_world))
 
     def render_pixels(self, pixels, width, height):
         self.render_scene()

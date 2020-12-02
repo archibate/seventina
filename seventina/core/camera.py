@@ -1,7 +1,7 @@
 from ..common import *
 
 
-class Trans:
+class Camera:
     def __init__(self):
         self.proj = ortho()
         self.view = lookat()
