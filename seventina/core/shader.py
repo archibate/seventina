@@ -44,6 +44,35 @@ class NormalShader:
 
 
 @ti.data_oriented
+class ViewDirShader:
+    def __init__(self, color):
+        self.color = color
+
+    @ti.func
+    def shade_color(self, engine, P, f, pos, normal):
+        L2V = engine.L2V[None]
+        V2L = L2V.inverse()
+        pers_pos = mapply_pos(L2V, pos)
+        pers_vdir = pers_pos
+        vdir = mapply_dir(V2L, pers_vdir)
+        view_dir = vdir.normalized()
+
+        self.color[P] = view_dir# * 0.5 + 0.5
+
+
+@ti.data_oriented
+class SimpleShader:
+    def __init__(self, color):
+        self.color = color
+
+    @ti.func
+    def shade_color(self, engine, P, f, pos, normal):
+        normal = mapply_dir(engine.L2V[None], normal)
+
+        self.color[P] = -normal.z
+
+
+@ti.data_oriented
 class Shader:
     def __init__(self, color, environ, material):
         self.color = color
@@ -57,6 +86,7 @@ class Shader:
 
         pos = mapply_pos(engine.L2W[None], pos)
         normal = mapply_dir(engine.L2W[None], normal)
+        view_dir = mapply_dir(engine.L2W[None], view_dir)
 
         res = V(0.0, 0.0, 0.0)
         res += self.environ.get_ambient_light_color()

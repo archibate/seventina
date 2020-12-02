@@ -1,7 +1,7 @@
 from ..common import *
 
 
-print('[Tai3D] Hint: LMB to orbit, MMB to move, wheel to zoom')
+print('[Tai3D] Hint: LMB to orbit, RMB to pan, wheel to zoom')
 
 
 class Control:
@@ -54,10 +54,10 @@ class Control:
         self.on_orbit(delta, origin)
 
     def on_mmb_drag(self, delta, origin):
-        self.on_pan(delta, origin)
+        pass
 
     def on_rmb_drag(self, delta, origin):
-        pass
+        self.on_pan(delta, origin)
 
     def on_wheel(self, delta, origin):
         self.on_zoom(delta, origin)
