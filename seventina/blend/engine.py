@@ -1,11 +1,6 @@
 import bpy
 
 from ..common import *
-from ..core.engine import Engine
-from ..core.environ import Environ
-from ..core.material import Material
-from ..core.shader import Shader
-from ..core.trans import Trans
 from .cache import IDCache
 
 
@@ -54,7 +49,7 @@ class OutputPixelConverter:
                 j += img.shape[1]
 
 
-class BlenderEngine(Engine):
+class BlenderEngine(tina.Engine):
     def __init__(self):
         super().__init__((
             bpy.context.scene.seventina_resolution_x,
@@ -68,10 +63,11 @@ class BlenderEngine(Engine):
 
         self.color = ti.Vector.field(3, float, self.res)
 
-        self.environ = Environ()
-        self.material = CookTorrance()
-        self.shader = Shader(self.color, self.environ, self.material)
-        self.trans = Trans()
+        self.environ = tina.Environ()
+        #self.material = tina.CookTorrance()
+        #self.shader = tina.Shader(self.color, self.environ, self.material)
+        self.shader = tina.NormalShader(self.color)
+        self.trans = tina.Trans()
 
     def render_scene(self):
         self.clear_depth()
@@ -88,7 +84,7 @@ class BlenderEngine(Engine):
             if object.type == 'MESH':
                 meshes.append(object)
 
-        self.nlights[None] = len(lights)
+        self.environ.nlights[None] = len(lights)
         for i, object in enumerate(lights):
             self.update_light(i, object)
 
@@ -106,16 +102,16 @@ class BlenderEngine(Engine):
         else:
             assert False, f'unsupported light type: {object.data.type}'
 
-        self.lights[i] = dir.tolist()
-        self.light_color[i] = color.tolist()
+        self.environ.lights[i] = dir.tolist()
+        self.environ.light_color[i] = color.tolist()
 
     def render_object(self, object):
         self.trans.model = np.array(object.matrix_world)
+        self.set_trans(self.trans)
 
         verts = self.cache.lookup(blender_get_object_mesh, object)
 
         self.set_face_verts(verts)
-        self.set_trans(self.trans)
         self.render(self.shader)
 
     def update_region_data(self, region3d):

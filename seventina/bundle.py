@@ -53,6 +53,11 @@ class Bundle:
             pass
 
         try:
+            return getattr(seventina.core.shader, name)
+        except AttributeError:
+            pass
+
+        try:
             return getattr(seventina.util.assimp, name)
         except AttributeError:
             pass

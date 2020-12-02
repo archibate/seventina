@@ -164,3 +164,6 @@ def lerp(fac, src, dst):
 def aces_tonemap(color):
     # https://zhuanlan.zhihu.com/p/21983679
     return color * (2.51 * color + 0.03) / (color * (2.43 * color + 0.59) + 0.14)
+
+
+from .bundle import tina
