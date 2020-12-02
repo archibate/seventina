@@ -42,8 +42,7 @@ class Engine:
         self.occup = ti.field(int, self.res)
         self.depth = ti.field(float, self.res)
 
-        self.verts = ti.Vector.field(3, float, maxverts)
-        self.faces = ti.Vector.field(3, int, maxfaces)
+        self.faces = ti.Vector.field(3, float, (maxfaces, 3))
         self.nfaces = ti.field(int, ())
 
         self.L2V = ti.Matrix.field(4, 4, float, ())
@@ -117,30 +116,21 @@ class Engine:
 
     @ti.func
     def get_face_vertices(self, f):
-        face = self.faces[f]
-        A, B, C = self.verts[face.x], self.verts[face.y], self.verts[face.z]
+        A, B, C = self.faces[f, 0], self.faces[f, 1], self.faces[f, 2]
         return A, B, C
-
-    @ti.kernel
-    def set_verts(self, verts: ti.ext_arr()):
-        for i in range(verts.shape[0]):
-            for k in ti.static(range(3)):
-                self.verts[i][k] = verts[i, k]
 
     @ti.kernel
     def set_faces(self, faces: ti.ext_arr()):
         self.nfaces[None] = faces.shape[0]
         for i in range(faces.shape[0]):
             for k in ti.static(range(3)):
-                self.faces[i][k] = faces[i, k]
+                for l in ti.static(range(3)):
+                    self.faces[i, k][l] = faces[i, k, l]
 
     def set_mesh(self, verts, faces):
-        assert len(verts) <= self.verts.shape[0], \
-                f'please increase maxverts to {len(verts)}'
         assert len(faces) <= self.faces.shape[0], \
                 f'please increase maxfaces to {len(faces)}'
-        self.set_verts(verts)
-        self.set_faces(faces)
+        self.set_faces(verts[faces])
 
     def set_trans(self, trans):
         L2W = trans.model

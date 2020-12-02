@@ -10,7 +10,7 @@ import numpy as np
 
 ti.init(ti.opengl)
 
-engine = Engine()
+engine = Engine((1024, 768))
 
 environ = Environ()
 material = CookTorrance(roughness=0.1)
@@ -25,8 +25,6 @@ verts, faces = o['v'], o['f'][:, :, 0]
 gui = ti.GUI('monkey', engine.res, fast_gui=True)
 control = Control(gui)
 
-engine.set_mesh(verts, faces)
-
 while gui.running:
     control.get_trans(trans)
     engine.set_trans(trans)
@@ -34,6 +32,7 @@ while gui.running:
     img.fill(0)
     engine.clear_depth()
 
+    engine.set_mesh(verts, faces)
     engine.render(shader)
 
     gui.set_image(img)
