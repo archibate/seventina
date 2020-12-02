@@ -46,10 +46,10 @@ class Engine:
 
         self.depth = ti.field(float, self.res)
 
+        self.nfaces = ti.field(int, ())
         self.verts = ti.Vector.field(3, float, (maxfaces, 3))
         if self.smoothing:
             self.norms = ti.Vector.field(3, float, (maxfaces, 3))
-        self.nfaces = ti.field(int, ())
 
         self.L2V = ti.Matrix.field(4, 4, float, ())
         self.L2W = ti.Matrix.field(4, 4, float, ())
@@ -78,8 +78,8 @@ class Engine:
         for f in ti.smart(self.get_faces_range()):
             Al, Bl, Cl = self.get_face_vertices(f)
             Av, Bv, Cv = [self.to_viewspace(p) for p in [Al, Bl, Cl]]
-            n = (Bv.xy - Av.xy).cross(Cv.xy - Av.xy)
-            if n <= 0:
+            facing = (Bv.xy - Av.xy).cross(Cv.xy - Av.xy)
+            if facing <= 0:
                 if ti.static(self.culling):
                     continue
                 else:
@@ -99,7 +99,7 @@ class Engine:
                 if ti.atomic_min(self.depth[P], depth) > depth:
                     wei *= wfac
                     wei /= wei.x + wei.y + wei.z
-                    self.interpolate(shader, P, f, wei, Al, Bl, Cl)
+                    self.interpolate(shader, P, f, facing, wei, Al, Bl, Cl)
 
     @ti.kernel
     def clear_depth(self):
@@ -107,12 +107,16 @@ class Engine:
             self.depth[P] = 1e6
 
     @ti.func
-    def interpolate(self, shader: ti.template(), P, f, wei, A, B, C):
+    def interpolate(self, shader: ti.template(), P, f, facing, wei, A, B, C):
         pos = wei.x * A + wei.y * B + wei.z * C
         normal = V(0., 0., 0.)
         if ti.static(self.smoothing):
             An, Bn, Cn = self.get_face_normals(f)
+            # TODO: actually we need to slerp normal?
             normal = (wei.x * An + wei.y * Bn + wei.z * Cn).normalized()
+            if ti.static(not self.culling):
+                if facing < 0:
+                    normal = -normal
         else:
             normal = (B - A).cross(C - A).normalized()
         shader.shade_color(self, P, f, pos, normal)
