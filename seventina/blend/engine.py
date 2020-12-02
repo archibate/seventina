@@ -64,7 +64,7 @@ class BlenderEngine(tina.Engine):
         self.color = ti.Vector.field(3, float, self.res)
 
         self.lighting = tina.Lighting(bpy.context.scene.seventina_max_lights)
-        self.material = tina.CookTorrance()
+        self.material = tina.Material()
         self.shader = tina.Shader(self.color, self.lighting, self.material)
         self.camera = tina.Camera()
 
@@ -91,13 +91,14 @@ class BlenderEngine(tina.Engine):
             self.render_object(object)
 
     def update_light(self, i, object):
-        color = np.array(object.data.color) * object.data.energy / 1000
+        color = np.array(object.data.color) * object.data.energy / 4
         model = np.array(object.matrix_world)
 
         if object.data.type == 'SUN':
             dir = model @ np.array([0, 0, 1, 0])
         elif object.data.type == 'POINT':
             dir = model @ np.array([0, 0, 0, 1])
+            color /= 4 * np.pi
         else:
             assert False, f'unsupported light type: {object.data.type}'
 
@@ -106,7 +107,7 @@ class BlenderEngine(tina.Engine):
 
     def render_object(self, object):
         self.camera.model = np.array(object.matrix_world)
-        self.set_trans(self.camera)
+        self.set_camera(self.camera)
 
         verts = self.cache.lookup(blender_get_object_mesh, object)
 

@@ -21,7 +21,7 @@ class CookTorrance(Material):
         self.specular = ti.field(float, ())
         self.basecolor = ti.Vector.field(3, float, ())
 
-        kwargs.setdefault('roughness', 0.3)
+        kwargs.setdefault('roughness', 0.4)
         kwargs.setdefault('metallic', 0.0)
         kwargs.setdefault('specular', 0.5)
         kwargs.setdefault('basecolor', (1, 1, 1))
