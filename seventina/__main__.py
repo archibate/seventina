@@ -10,7 +10,7 @@ import numpy as np
 
 ti.init(ti.opengl)
 
-engine = Engine((1024, 768))
+engine = Engine((1024, 768), smoothing=True)
 
 environ = Environ()
 material = CookTorrance(roughness=0.1)
@@ -19,8 +19,9 @@ img = ti.Vector.field(3, float, engine.res)
 shader = Shader(img, environ, material)
 trans = Trans()
 
-o = readobj('assets/monkey.obj')
-verts, faces = o['v'], o['f'][:, :, 0]
+o = readobj('assets/sphere.obj')
+verts = o['v'][o['f'][:, :, 0]]
+norms = o['vn'][o['f'][:, :, 2]]
 
 gui = ti.GUI('monkey', engine.res, fast_gui=True)
 control = Control(gui)
@@ -32,7 +33,8 @@ while gui.running:
     img.fill(0)
     engine.clear_depth()
 
-    engine.set_mesh(verts, faces)
+    engine.set_face_verts(verts)
+    engine.set_face_norms(norms)
     engine.render(shader)
 
     gui.set_image(img)

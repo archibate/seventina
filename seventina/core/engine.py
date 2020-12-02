@@ -36,21 +36,24 @@ class Engine:
             if all(wei >= 0):
                 yield pos, wei
 
-    def __init__(self, res=512, maxverts=65536, maxfaces=65536,
-            culling=True, clipping=False):
+    def __init__(self, res=512, maxfaces=65536,
+            smoothing=False, culling=True, clipping=False):
+
         self.res = tovector((res, res) if isinstance(res, int) else res)
-        self.occup = ti.field(int, self.res)
+        self.culling = culling
+        self.clipping = clipping
+        self.smoothing = smoothing
+
         self.depth = ti.field(float, self.res)
 
-        self.faces = ti.Vector.field(3, float, (maxfaces, 3))
+        self.verts = ti.Vector.field(3, float, (maxfaces, 3))
+        if self.smoothing:
+            self.norms = ti.Vector.field(3, float, (maxfaces, 3))
         self.nfaces = ti.field(int, ())
 
         self.L2V = ti.Matrix.field(4, 4, float, ())
         self.L2W = ti.Matrix.field(4, 4, float, ())
         self.C2L = ti.Matrix.field(4, 4, float, ())
-
-        self.culling = culling
-        self.clipping = clipping
 
         @ti.materialize_callback
         @ti.kernel
@@ -106,7 +109,12 @@ class Engine:
     @ti.func
     def interpolate(self, shader: ti.template(), P, f, wei, A, B, C):
         pos = wei.x * A + wei.y * B + wei.z * C
-        normal = (B - A).cross(C - A).normalized()
+        normal = V(0., 0., 0.)
+        if ti.static(self.smoothing):
+            An, Bn, Cn = self.get_face_normals(f)
+            normal = (wei.x * An + wei.y * Bn + wei.z * Cn).normalized()
+        else:
+            normal = (B - A).cross(C - A).normalized()
         shader.shade_color(self, P, f, pos, normal)
 
     @ti.func
@@ -116,21 +124,28 @@ class Engine:
 
     @ti.func
     def get_face_vertices(self, f):
-        A, B, C = self.faces[f, 0], self.faces[f, 1], self.faces[f, 2]
+        A, B, C = self.verts[f, 0], self.verts[f, 1], self.verts[f, 2]
+        return A, B, C
+
+    @ti.func
+    def get_face_normals(self, f):
+        A, B, C = self.norms[f, 0], self.norms[f, 1], self.norms[f, 2]
         return A, B, C
 
     @ti.kernel
-    def set_faces(self, faces: ti.ext_arr()):
-        self.nfaces[None] = faces.shape[0]
-        for i in range(faces.shape[0]):
+    def set_face_verts(self, verts: ti.ext_arr()):
+        self.nfaces[None] = min(verts.shape[0], self.verts.shape[0])
+        for i in range(self.nfaces[None]):
             for k in ti.static(range(3)):
                 for l in ti.static(range(3)):
-                    self.faces[i, k][l] = faces[i, k, l]
+                    self.verts[i, k][l] = verts[i, k, l]
 
-    def set_mesh(self, verts, faces):
-        assert len(faces) <= self.faces.shape[0], \
-                f'please increase maxfaces to {len(faces)}'
-        self.set_faces(verts[faces])
+    @ti.kernel
+    def set_face_norms(self, norms: ti.ext_arr()):
+        for i in range(self.nfaces[None]):
+            for k in ti.static(range(3)):
+                for l in ti.static(range(3)):
+                    self.norms[i, k][l] = norms[i, k, l]
 
     def set_trans(self, trans):
         L2W = trans.model

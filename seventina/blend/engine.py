@@ -107,9 +107,9 @@ class BlenderEngine(Engine):
     def render_object(self, object):
         self.trans.model = np.array(object.matrix_world)
 
-        verts, faces = self.cache.lookup(blender_get_object_mesh, object)
+        verts = self.cache.lookup(blender_get_object_mesh, object)
 
-        self.set_mesh(verts, faces)
+        self.set_face_verts(verts)
         self.set_trans(self.trans)
         self.render(self.shader)
 
@@ -162,4 +162,4 @@ def blender_get_object_mesh(object):
     bmesh.ops.triangulate(bm, faces=bm.faces)
     verts = bmesh_verts_to_numpy(bm)
     faces = bmesh_faces_to_numpy(bm)
-    return verts, faces
+    return verts[faces]
