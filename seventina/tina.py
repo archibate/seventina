@@ -1,30 +1,28 @@
-import seventina
-import types
+@eval('lambda x: x()')
+def __getattr__():
+    import seventina
+    import types
 
+    class namespace:
+        def __init__(self, mod, path):
+            self._mod = mod
+            self._path = path
 
-class namespace:
-    def __init__(self, mod, path):
-        self._mod = mod
-        self._path = path
+        def __getattr__(self, name):
+            path = self._path + '.' + name
+            if not hasattr(self._mod, name):
+                try:
+                    __import__(path)
+                except ImportError:
+                    raise AttributeError(name)
+            obj = getattr(self._mod, name)
+            if isinstance(obj, types.ModuleType):
+                obj = namespace(obj, path)
+            return obj
 
-    def __getattr__(self, name):
-        path = self._path + '.' + name
-        if not hasattr(self._mod, name):
-            try:
-                __import__(path)
-            except ImportError:
-                raise AttributeError(name)
-        obj = getattr(self._mod, name)
-        if isinstance(obj, types.ModuleType):
-            obj = namespace(obj, path)
-        return obj
+    seventina = namespace(seventina, 'seventina')
 
-
-seventina = namespace(seventina, 'seventina')
-
-
-class Bundle:
-    def __getattr__(self, name):
+    def wrapped(name):
         try:
             return getattr(seventina, name)
         except AttributeError:
@@ -69,6 +67,4 @@ class Bundle:
 
         raise AttributeError(name)
 
-
-
-tina = Bundle()
+    return wrapped
