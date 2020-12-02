@@ -29,32 +29,32 @@ class CookTorrance(Material):
         super().__init__(**kwargs)
 
     @ti.func
-    def ischlick(self, cost):
-        k = (self.roughness[None] + 1)**2 / 8
-        return k + (1 - k) * cost
-
-    @ti.func
-    def fresnel(self, f0, HoV):
-        return f0 + (1 - f0) * (1 - HoV)**5
-
-    @ti.func
     def brdf(self, nrm, idir, odir):
         EPS = 1e-10
         roughness = self.roughness[None]
         metallic = self.metallic[None]
         specular = self.specular[None]
         basecolor = self.basecolor[None]
+
         half = (idir + odir).normalized()
         NoH = max(EPS, half.dot(nrm))
         NoL = max(EPS, idir.dot(nrm))
         NoV = max(EPS, odir.dot(nrm))
         HoV = min(1 - EPS, max(EPS, half.dot(odir)))
-        ndf = roughness**2 / (NoH**2 * (roughness**2 - 1) + 1)**2
-        vdf = 0.25 / (self.ischlick(NoL) * self.ischlick(NoV))
+
+        # Trowbridge-Reitz GGX microfacet distribution
+        ndf = roughness**2 / (NoH**2 * (roughness**2 - 1) + 1)**2 / ti.pi
+
+        # Smith's method with Schlick-GGX
+        k = (roughness + 1)**2 / 8
+        vdf = NoV * NoL / ((NoV * (1 - k) + k) * (NoL * (1 - k) + k))
+
+        # Fresnel-Schlick approximation
         f0 = metallic * basecolor + (1 - metallic) * 0.16 * specular**2
         ks, kd = f0, (1 - f0) * (1 - self.metallic)
-        fdf = self.fresnel(f0, NoV)
-        return kd * basecolor + ks * fdf * vdf * ndf / ti.pi
+        fdf = f0 + (1 - f0) * (1 - HoV)**5
+
+        return kd * basecolor + ks * fdf * vdf * ndf / (NoV * NoL)
 
 
 class BlinnPhong(Material):

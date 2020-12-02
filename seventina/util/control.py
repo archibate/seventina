@@ -51,13 +51,16 @@ class Control:
         self.scale *= pow(1.12, delta)
 
     def on_lmb_drag(self, delta, origin):
-        self.on_orbit(delta, origin)
-
-    def on_mmb_drag(self, delta, origin):
         pass
 
+    def on_mmb_drag(self, delta, origin):
+        if self.gui.is_pressed(self.gui.SHIFT):
+            self.on_pan(delta, origin)
+        else:
+            self.on_orbit(delta, origin)
+
     def on_rmb_drag(self, delta, origin):
-        self.on_pan(delta, origin)
+        pass
 
     def on_wheel(self, delta, origin):
         self.on_zoom(delta, origin)
