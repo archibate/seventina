@@ -54,19 +54,18 @@ class BlenderEngine(tina.Engine):
         super().__init__((
             bpy.context.scene.seventina_resolution_x,
             bpy.context.scene.seventina_resolution_y),
-            bpy.context.scene.seventina_max_verts,
             bpy.context.scene.seventina_max_faces,
-            bpy.context.scene.seventina_max_lights,
-            bpy.context.scene.seventina_culling)
+            bpy.context.scene.seventina_smoothing,
+            bpy.context.scene.seventina_culling,
+            bpy.context.scene.seventina_clipping)
         self.output = OutputPixelConverter()
         self.cache = IDCache()
 
         self.color = ti.Vector.field(3, float, self.res)
 
-        self.environ = tina.Environ()
-        #self.material = tina.CookTorrance()
-        #self.shader = tina.Shader(self.color, self.environ, self.material)
-        self.shader = tina.NormalShader(self.color)
+        self.environ = tina.Environ(bpy.context.scene.seventina_max_lights)
+        self.material = tina.CookTorrance()
+        self.shader = tina.Shader(self.color, self.environ, self.material)
         self.trans = tina.Trans()
 
     def render_scene(self):
@@ -115,15 +114,17 @@ class BlenderEngine(tina.Engine):
         self.render(self.shader)
 
     def update_region_data(self, region3d):
-        self.trans.proj = np.array(region3d.perspective_matrix)
-        self.trans.view = np.eye(4)
+        pers = np.array(region3d.perspective_matrix)
+        self.trans.view = np.array(region3d.view_matrix)
+        self.trans.proj = pers @ np.linalg.inv(self.trans.view)
 
     def update_default_camera(self):
         camera = bpy.context.scene.camera
         render = bpy.context.scene.render
         depsgraph = bpy.context.evaluated_depsgraph_get()
+        scale = render.resolution_percentage / 100.0
         self.trans.proj = np.array(camera.calc_matrix_camera(depsgraph,
-            x=render.resolution_x, y=render.resolution_y,
+            x=render.resolution_x * scale, y=render.resolution_y * scale,
             scale_x=render.pixel_aspect_x, scale_y=render.pixel_aspect_y))
         self.trans.view = np.linalg.inv(np.array(camera.matrix_world))
 
