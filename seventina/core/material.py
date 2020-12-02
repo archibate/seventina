@@ -14,6 +14,7 @@ class Material:
         return 1
 
 
+# http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
 class CookTorrance(Material):
     def __init__(self, **kwargs):
         self.roughness = ti.field(float, ())
@@ -29,6 +30,10 @@ class CookTorrance(Material):
         super().__init__(**kwargs)
 
     @ti.func
+    def chi(self, v):
+        return 1 if v > 0 else 0
+
+    @ti.func
     def brdf(self, nrm, idir, odir):
         EPS = 1e-10
         roughness = self.roughness[None]
@@ -38,23 +43,31 @@ class CookTorrance(Material):
 
         half = (idir + odir).normalized()
         NoH = max(EPS, half.dot(nrm))
+        VoH = max(EPS, idir.dot(half))
         NoL = max(EPS, idir.dot(nrm))
         NoV = max(EPS, odir.dot(nrm))
         HoV = min(1 - EPS, max(EPS, half.dot(odir)))
 
         # Trowbridge-Reitz GGX microfacet distribution
-        ndf = roughness**2 / (NoH**2 * (roughness**2 - 1) + 1)**2 / ti.pi
+        den = NoH**2 * (roughness**2 - 1) + 1
+        ndf = roughness**2 / (ti.pi * den**2)
 
         # Smith's method with Schlick-GGX
-        k = (roughness + 1)**2 / 8
-        vdf = NoV * NoL / ((NoV * (1 - k) + k) * (NoL * (1 - k) + k))
+        #k = (roughness + 1)**2 / 8
+        #vdf = 1 / ((NoV * (1 - k) + k) * (NoL * (1 - k) + k))
+
+        # GGX partial geometry term
+        tan2 = (1 - VoH**2) / VoH**2
+        vdf = 1 / (1 + ti.sqrt(1 + roughness**2 * tan2))
 
         # Fresnel-Schlick approximation
         f0 = metallic * basecolor + (1 - metallic) * 0.16 * specular**2
-        ks, kd = f0, (1 - f0) * (1 - self.metallic)
+        #kf = abs((1 - ior) / (1 + ior))**2
+        #f0 = kf * basecolor + (1 - kf) * metallic
+        ks, kd = f0, (1 - f0)# * (1 - metallic)
         fdf = f0 + (1 - f0) * (1 - HoV)**5
 
-        return kd * basecolor + ks * fdf * vdf * ndf / (NoV * NoL)
+        return kd * basecolor + ks * fdf * vdf * ndf
 
 
 class BlinnPhong(Material):
