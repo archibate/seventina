@@ -25,7 +25,6 @@ class Engine:
         bot, top = ifloor(min(a, b, c)), iceil(max(a, b, c))
         bot, top = max(bot, 0), min(top, self.res - 1)
         n = (b - a).cross(c - a)
-        abn = (a - b) / n
         bcn = (b - c) / n
         can = (c - a) / n
         for i, j in ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1)):
@@ -45,11 +44,17 @@ class Engine:
         self.smoothing = smoothing
 
         self.depth = ti.field(float, self.res)
+        self.occup = ti.field(int, self.res)
 
         self.nfaces = ti.field(int, ())
         self.verts = ti.Vector.field(3, float, (maxfaces, 3))
         if self.smoothing:
             self.norms = ti.Vector.field(3, float, (maxfaces, 3))
+
+        self.bcn = ti.Vector.field(2, float, maxfaces)
+        self.can = ti.Vector.field(2, float, maxfaces)
+        self.boo = ti.Vector.field(2, float, maxfaces)
+        self.coo = ti.Vector.field(2, float, maxfaces)
 
         self.L2V = ti.Matrix.field(4, 4, float, ())
         self.L2W = ti.Matrix.field(4, 4, float, ())
@@ -75,7 +80,9 @@ class Engine:
         return (p.xy * 0.5 + 0.5) * self.res
 
     @ti.kernel
-    def render(self, shader: ti.template()):
+    def render_occup(self):
+        for P in ti.grouped(self.occup):
+            self.occup[P] = -1
         for f in ti.smart(self.get_faces_range()):
             Al, Bl, Cl = self.get_face_vertices(f)
             Av, Bv, Cv = [self.to_viewspace(p) for p in [Al, Bl, Cl]]
@@ -92,15 +99,54 @@ class Engine:
                         if not all(-1 <= Cv <= 1):
                             continue
 
-            Ai, Bi, Ci = [self.to_viewport(p) for p in [Av, Bv, Cv]]
-            wfac = 1 / V(*[mapply(self.L2V[None], p, 1)[1] for p in [Al, Bl, Cl]])
-            for pos, wei in ti.smart(self.draw_trip(Ai, Bi, Ci)):
-                P = int(pos)
-                depth = wei.x * Av.z + wei.y * Bv.z + wei.z * Cv.z
-                if ti.atomic_min(self.depth[P], depth) > depth:
-                    wei *= wfac
-                    wei /= wei.x + wei.y + wei.z
-                    self.interpolate(shader, P, f, facing, wei, Al, Bl, Cl)
+            a, b, c = [self.to_viewport(p) for p in [Av, Bv, Cv]]
+
+            bot, top = ifloor(min(a, b, c)), iceil(max(a, b, c))
+            bot, top = max(bot, 0), min(top, self.res - 1)
+            n = (b - a).cross(c - a)
+            bcn = (b - c) / n
+            can = (c - a) / n
+            for i, j in ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1)):
+                pos = float(V(i, j)) + 0.5
+                w_bc = (pos - b).cross(bcn)
+                w_ca = (pos - c).cross(can)
+                wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
+                if all(wei >= 0):
+                    P = int(pos)
+                    depth = wei.x * Av.z + wei.y * Bv.z + wei.z * Cv.z
+                    if ti.atomic_min(self.depth[P], depth) > depth:
+                        self.occup[P] = f
+
+            self.bcn[f] = bcn
+            self.can[f] = can
+            self.boo[f] = b
+            self.coo[f] = c
+
+    @ti.kernel
+    def render_color(self, shader: ti.template()):
+        for P in ti.grouped(self.occup):
+            f = self.occup[P]
+            if f == -1:
+                continue
+
+            Al, Bl, Cl = self.get_face_vertices(f)
+
+            bcn = self.bcn[f]
+            can = self.can[f]
+            b = self.boo[f]
+            c = self.coo[f]
+            pos = float(P) + 0.5
+            w_bc = (pos - b).cross(bcn)
+            w_ca = (pos - c).cross(can)
+            wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
+            wei /= V(*[mapply(self.L2V[None], p, 1)[1] for p in [Al, Bl, Cl]])
+            wei /= wei.x + wei.y + wei.z
+
+            self.interpolate(shader, P, f, 1, wei, Al, Bl, Cl)
+
+    def render(self, shader):
+        self.render_occup()
+        self.render_color(shader)
 
     @ti.kernel
     def clear_depth(self):
