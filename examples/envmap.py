@@ -50,5 +50,5 @@ while gui.running:
     engine.set_face_norms(norms)
     engine.render(shader)
 
-    gui.set_image(tina.aces_tonemap(img.to_numpy()))
+    gui.set_image(img)
     gui.show()
