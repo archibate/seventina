@@ -90,8 +90,6 @@ class Engine:
             if facing <= 0:
                 if ti.static(self.culling):
                     continue
-                else:
-                    Al, Bl, Cl = Al, Cl, Bl
 
             if ti.static(self.clipping):
                 if not all(-1 <= Av <= 1):
@@ -161,11 +159,11 @@ class Engine:
             An, Bn, Cn = self.get_face_normals(f)
             # TODO: actually we need to slerp normal?
             normal = (wei.x * An + wei.y * Bn + wei.z * Cn)
-            if ti.static(not self.culling):
-                if facing < 0:
-                    normal = -normal
         else:
             normal = (B - A).cross(C - A)  # let the shader normalize it
+        if ti.static(not self.culling):
+            if facing < 0:
+                normal = -normal
         shader.shade_color(self, P, f, pos, normal)
 
     @ti.func

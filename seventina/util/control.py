@@ -8,7 +8,7 @@ class Control:
     def __init__(self, gui, fov=60, blendish=False):
         self.gui = gui
         self.center = np.array([0, 0, 0], dtype=float)
-        self.up = np.array([0, 0, 1], dtype=float)
+        self.up = np.array([0, 1e-12, 1], dtype=float)
         self.back = np.array([0, -1, 0], dtype=float)
         self.dist = 3
         self.scale = 1.0

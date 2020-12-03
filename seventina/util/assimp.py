@@ -14,7 +14,7 @@ def _tri_append(faces, indices):
         assert False, len(indices)
 
 
-def readobj(path, orient='xZy', scale=None):
+def readobj(path, orient='xZy', scale=None, simple=False):
     v = []
     vt = []
     vn = []
@@ -89,6 +89,9 @@ def readobj(path, orient='xZy', scale=None):
             objautoscale(ret)
         else:
             ret['v'] *= scale
+
+    if simple:
+        return ret['v'], ret['f'][:, :, 0]
 
     return ret
 
@@ -174,3 +177,15 @@ def objmknorm(obj):
     newf = np.array([fip, fit, fin]).swapaxes(1, 2).swapaxes(0, 2)
     obj['vn'] = nrm
     obj['f'] = newf
+
+
+def readply(path):
+    from plyfile import PlyData
+
+    ply = PlyData.read(path)
+    verts = ply.elements[0]
+    faces = ply.elements[1]
+    verts = np.array([list(v)[:3] for v in verts], dtype=np.float32)
+    faces = np.array([list(f[0]) for f in faces], dtype=np.int32)
+
+    return verts, faces
