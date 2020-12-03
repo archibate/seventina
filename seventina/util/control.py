@@ -5,7 +5,7 @@ print('[Tai3D] Hint: LMB to orbit, RMB to pan, wheel to zoom')
 
 
 class Control:
-    def __init__(self, gui, fov=60):
+    def __init__(self, gui, fov=60, blendish=False):
         self.gui = gui
         self.center = np.array([0, 0, 0], dtype=float)
         self.up = np.array([0, 0, 1], dtype=float)
@@ -17,6 +17,7 @@ class Control:
         self.lmb = None
         self.mmb = None
         self.rmb = None
+        self.blendish = blendish
 
     def process_events(self):
         for e in self.gui.get_events():
@@ -51,16 +52,19 @@ class Control:
         self.scale *= pow(1.12, delta)
 
     def on_lmb_drag(self, delta, origin):
-        pass
-
-    def on_mmb_drag(self, delta, origin):
-        if self.gui.is_pressed(self.gui.SHIFT):
-            self.on_pan(delta, origin)
-        else:
+        if not self.blendish:
             self.on_orbit(delta, origin)
 
+    def on_mmb_drag(self, delta, origin):
+        if self.blendish:
+            if self.gui.is_pressed(self.gui.SHIFT):
+                self.on_pan(delta, origin)
+            else:
+                self.on_orbit(delta, origin)
+
     def on_rmb_drag(self, delta, origin):
-        pass
+        if not self.blendish:
+            self.on_pan(delta, origin)
 
     def on_wheel(self, delta, origin):
         self.on_zoom(delta, origin)

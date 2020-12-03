@@ -83,7 +83,7 @@ class Shader:
             if cos_i > 0:
                 light_distance = light_dir.norm()
                 light_dir /= light_distance
-                lcolor /= light_distance**3
+                lcolor /= light_distance**2
                 mcolor = self.material.brdf(normal, light_dir, view_dir)
                 res += cos_i * lcolor * mcolor
 
