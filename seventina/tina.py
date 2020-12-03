@@ -56,12 +56,22 @@ def __getattr__():
             pass
 
         try:
+            return getattr(seventina.core.camera, name)
+        except AttributeError:
+            pass
+
+        try:
             return getattr(seventina.util.assimp, name)
         except AttributeError:
             pass
 
         try:
             return getattr(seventina.common, name)
+        except AttributeError:
+            pass
+
+        try:
+            return getattr(seventina.advans, name)
         except AttributeError:
             pass
 

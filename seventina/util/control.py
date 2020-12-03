@@ -20,8 +20,7 @@ class Control:
         self.blendish = blendish
 
     def process_events(self):
-        for e in self.gui.get_events():
-            self.on_event(e)
+        return any([self.on_event(e) for e in self.gui.get_events()])
 
     def on_pan(self, delta, origin):
         right = np.cross(self.up, self.back)
@@ -70,7 +69,7 @@ class Control:
         self.on_zoom(delta, origin)
 
     def get_camera(self, camera):
-        self.process_events()
+        ret = self.process_events()
 
         from ..core.camera import lookat, orthogonal, perspective
 
@@ -83,6 +82,8 @@ class Control:
                     self.center, self.back, self.up, self.dist / self.scale)
             camera.proj = perspective(self.fov, aspect)
 
+        return ret
+
     def on_event(self, e):
         if e.type == self.gui.PRESS:
             if e.key == self.gui.TAB:
@@ -90,21 +91,25 @@ class Control:
                     self.fov = 60
                 else:
                     self.fov = 0
+                return True
             elif e.key == self.gui.ESCAPE:
                 self.gui.running = False
         if e.key == self.gui.LMB:
             if e.type == self.gui.PRESS:
                 self.lmb = np.array(e.pos)
+                return True
             else:
                 self.lmb = None
         elif e.key == self.gui.MMB:
             if e.type == self.gui.PRESS:
                 self.mmb = np.array(e.pos)
+                return True
             else:
                 self.mmb = None
         elif e.key == self.gui.RMB:
             if e.type == self.gui.PRESS:
                 self.rmb = np.array(e.pos)
+                return True
             else:
                 self.rmb = None
         elif e.key == self.gui.MOVE:
@@ -113,16 +118,22 @@ class Control:
                 delta_lmb = new_lmb - self.lmb
                 self.on_lmb_drag(delta_lmb, self.lmb)
                 self.lmb = new_lmb
+                return True
             if self.mmb is not None:
                 new_mmb = np.array(e.pos)
                 delta_mmb = new_mmb - self.mmb
                 self.on_mmb_drag(delta_mmb, self.mmb)
                 self.mmb = new_mmb
+                return True
             if self.rmb is not None:
                 new_rmb = np.array(e.pos)
                 delta_rmb = new_rmb - self.rmb
                 self.on_rmb_drag(delta_rmb, self.rmb)
                 self.rmb = new_rmb
+                return True
         elif e.key == self.gui.WHEEL:
             delta = e.delta[1] / 120
             self.on_wheel(delta, np.array(e.pos))
+            return True
+
+        return False

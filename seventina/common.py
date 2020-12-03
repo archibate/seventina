@@ -1,60 +1,7 @@
 import taichi as ti
 import numpy as np
 
-
-setattr(ti, 'static', lambda x, *xs: [x] + list(xs) if xs else x) or setattr(
-        ti.Matrix, 'element_wise_writeback_binary', (lambda f: lambda x, y, z:
-        (y.__name__ != 'assign' or not setattr(y, '__name__', '_assign'))
-        and f(x, y, z))(ti.Matrix.element_wise_writeback_binary)) or setattr(
-        ti.Matrix, 'is_global', (lambda f: lambda x: len(x) and f(x))(
-        ti.Matrix.is_global)) or setattr(ti, 'pi', __import__('math').pi
-        ) or setattr(ti, 'tau', __import__('math').tau) or setattr(ti, 'GUI',
-        (lambda f: __import__('functools').wraps(f)(lambda x='Tina', y=512,
-        *z, **w: f(x, tuple(y) if isinstance(y, ti.Matrix) else y, *z, **w)
-        ))(ti.GUI))
-
-
-ti.smart = lambda x: x
-
-@eval('lambda x: x()')
-def _():
-    import copy, ast
-    from taichi.lang.transformer import ASTTransformerBase, ASTTransformerPreprocess
-
-    old_get_decorator = ASTTransformerBase.get_decorator
-
-    @staticmethod
-    def get_decorator(node):
-        if not (isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute) and isinstance(
-                    node.func.value, ast.Name) and node.func.value.id == 'ti'
-                and node.func.attr in ['smart']):
-            return old_get_decorator(node)
-        return node.func.attr
-
-    ASTTransformerBase.get_decorator = get_decorator
-
-    old_visit_struct_for = ASTTransformerPreprocess.visit_struct_for
-
-    def visit_struct_for(self, node, is_grouped):
-        if not is_grouped:
-            decorator = self.get_decorator(node.iter)
-            if decorator == 'smart':  # so smart!
-                self.current_control_scope().append('smart')
-                self.generic_visit(node, ['body'])
-                t = self.parse_stmt('if 1: pass; del a')
-                t.body[0] = node
-                target = copy.deepcopy(node.target)
-                target.ctx = ast.Del()
-                if isinstance(target, ast.Tuple):
-                    for tar in target.elts:
-                        tar.ctx = ast.Del()
-                t.body[-1].targets = [target]
-                return t
-
-        return old_visit_struct_for(self, node, is_grouped)
-
-    ASTTransformerPreprocess.visit_struct_for = visit_struct_for
+from .hacker import *
 
 
 def V(*xs):
@@ -158,12 +105,6 @@ def reflect(I, N):
 @ti.pyfunc
 def lerp(fac, src, dst):
     return src * (1 - fac) + dst * fac
-
-
-@ti.pyfunc
-def aces_tonemap(color):
-    # https://zhuanlan.zhihu.com/p/21983679
-    return color * (2.51 * color + 0.03) / (color * (2.43 * color + 0.59) + 0.14)
 
 
 from . import tina
