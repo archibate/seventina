@@ -1,7 +1,7 @@
 import bpy
 import bgl
 
-from . import worker, ui
+from . import worker, options
 
 
 class TinaRenderEngine(bpy.types.RenderEngine):
@@ -267,4 +267,4 @@ def unregister():
             panel.COMPAT_ENGINES.remove('TINA')
 
     worker.unregister()
-    ui.unregister()
+    options.unregister()
