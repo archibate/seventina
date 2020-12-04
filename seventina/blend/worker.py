@@ -80,7 +80,7 @@ def init_engine():
 
 
 def render_main(width, height, region3d=None):
-    pixels = np.empty(width * height * 4, dtype=np.float32)
+    pixels = np.empty(width * height * 4, dtype=np.uint8)
 
     @worker.launch
     def result(self):
@@ -94,6 +94,9 @@ def render_main(width, height, region3d=None):
         self.engine.render_pixels(pixels, width, height)
 
     worker.wait_done()
+
+    from ..advans import ce_untonemap
+    pixels = ce_untonemap(pixels)
     return pixels
 
 

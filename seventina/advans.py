@@ -19,6 +19,15 @@ def aces_tonemap(color):
 
 
 @ti.func
+def ce_tonemap(color):
+    return int((1 - ti.exp(-color)) * 255 + 0.5)
+
+
+def ce_untonemap(value):
+    return -np.log(1 - np.float32(value) / 255)
+
+
+@ti.func
 def tangentspace(nrm):
     up = V(0., 1., 0.)
     bitan = nrm.cross(up).normalized()

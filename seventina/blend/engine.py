@@ -1,6 +1,7 @@
 import bpy
 
 from ..common import *
+from ..advans import *
 from .cache import IDCache
 
 
@@ -41,9 +42,9 @@ class OutputPixelConverter:
                     else:
                         r, g, b = self.cook(img[i, j])
                     base = (j * width + i) * 4
-                    out[base + 0] = r
-                    out[base + 1] = g
-                    out[base + 2] = b
+                    out[base + 0] = ce_tonemap(r)
+                    out[base + 1] = ce_tonemap(g)
+                    out[base + 2] = ce_tonemap(b)
                     out[base + 3] = 1
                     i += img.shape[0]
                 j += img.shape[1]
