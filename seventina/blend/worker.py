@@ -102,10 +102,11 @@ def render_main(width, height, region3d=None):
         if not hasattr(self, 'engine'):
             self.engine = init_engine()
 
-        if not hasattr(worker, 'is_triggered'):
-            self.engine.clear_samples()
-        else:
-            del self.is_triggered
+        if bpy.context.scene.seventina_viewport_samples != 1:
+            if not hasattr(worker, 'is_triggered'):
+                self.engine.clear_samples()
+            else:
+                del self.is_triggered
 
         if is_final:
             self.engine.update_default_camera()
@@ -114,9 +115,9 @@ def render_main(width, height, region3d=None):
 
         if is_final:
             for i in range(bpy.context.scene.seventina_render_samples):
-                self.engine.render_scene()
+                self.engine.render_scene(is_final)
         else:
-            self.engine.render_scene()
+            self.engine.render_scene(is_final)
 
         self.engine.dump_pixels(pixels, width, height, is_final)
 
@@ -128,7 +129,8 @@ def render_main(width, height, region3d=None):
     worker.wait_done()
 
     if result[0] is True:
-        trigger_redraw()
+        if bpy.context.scene.seventina_viewport_samples != 1:
+            trigger_redraw()
 
     return pixels
 
@@ -136,8 +138,9 @@ def render_main(width, height, region3d=None):
 def invalidate_main(updates, viewport_changed):
     @worker.launch
     def result(self):
-        hasattr(self, 'is_triggered') and delattr(self, 'is_triggered') if viewport_changed or bpy.context.scene.frame_current != invalidate_main.cac_old_frame_current or not hasattr(invalidate_main, 'cac_old_frame_current') or not all(getattr(u.id, 'name', '').startswith('_triggerdummy') for u in updates if type(u.id).__name__ not in ['Scene', 'Collection']) or all(type(u.id).__name__ in ['Scene', 'Collection'] for u in updates) else 1
-        invalidate_main.cac_old_frame_current = bpy.context.scene.frame_current
+        if bpy.context.scene.seventina_viewport_samples != 1:
+            hasattr(self, 'is_triggered') and delattr(self, 'is_triggered') if viewport_changed or not hasattr(invalidate_main, 'cac_old_frame_current') or bpy.context.scene.frame_current != invalidate_main.cac_old_frame_current or not all(getattr(u.id, 'name', '').startswith('_triggerdummy') for u in updates if type(u.id).__name__ not in ['Scene', 'Collection']) or all(type(u.id).__name__ in ['Scene', 'Collection'] for u in updates) else 1
+            invalidate_main.cac_old_frame_current = bpy.context.scene.frame_current
 
         for update in updates:
             self.engine.invalidate_callback(update)

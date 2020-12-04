@@ -10,7 +10,7 @@ obj = tina.readobj(sys.argv[1], scale='auto')
 verts = obj['v'][obj['f'][:, :, 0]]
 norms = obj['vn'][obj['f'][:, :, 2]]
 
-engine = tina.Engine(maxfaces=len(verts), smoothing=True)
+engine = tina.Engine((1024, 768), maxfaces=len(verts), smoothing=True)
 camera = tina.Camera()
 
 img = ti.Vector.field(3, float, engine.res)
@@ -20,8 +20,13 @@ shader = tina.SimpleShader(img)
 gui = ti.GUI('visualize', engine.res, fast_gui=True)
 control = tina.Control(gui)
 
+accum = tina.Accumator(engine.res)
+
 while gui.running:
-    control.get_camera(camera)
+    engine.randomize_bias(accum.count[None] <= 1)
+
+    if control.get_camera(camera):
+        accum.clear()
     engine.set_camera(camera)
 
     img.fill(0)
@@ -31,5 +36,6 @@ while gui.running:
     engine.set_face_norms(norms)
     engine.render(shader)
 
-    gui.set_image(img)
+    accum.update(img)
+    gui.set_image(accum.img)
     gui.show()

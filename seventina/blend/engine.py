@@ -88,7 +88,7 @@ class BlenderEngine(tina.Engine):
         self.camera = tina.Camera()
         self.accum = tina.Accumator(self.res)
 
-    def render_scene(self):
+    def render_scene(self, is_final):
         self.randomize_bias(self.accum.count[None] == 0)
         self.clear_depth()
         self.color.fill(0)
@@ -111,10 +111,14 @@ class BlenderEngine(tina.Engine):
         for object in meshes:
             self.render_object(object)
 
-        self.accum.update(self.color)
+        if is_final or bpy.context.scene.seventina_viewport_samples != 1:
+            self.accum.update(self.color)
 
     def clear_samples(self):
-        self.accum.clear()
+        if bpy.context.scene.seventina_viewport_samples != 1:
+            self.accum.clear()
+        else:
+            self.accum.count[None] = 0
 
     def is_need_redraw(self):
         return self.accum.count[None] < bpy.context.scene.seventina_viewport_samples
@@ -135,10 +139,12 @@ class BlenderEngine(tina.Engine):
         self.lighting.light_color[i] = color.tolist()
 
     def render_object(self, object):
+        verts, norms = self.cache.lookup(blender_get_object_mesh, object)
+        if not len(verts):
+            return
+
         self.camera.model = np.array(object.matrix_world)
         self.set_camera(self.camera)
-
-        verts, norms = self.cache.lookup(blender_get_object_mesh, object)
 
         self.set_face_verts(verts)
         if self.smoothing:
@@ -160,9 +166,12 @@ class BlenderEngine(tina.Engine):
             scale_x=render.pixel_aspect_x, scale_y=render.pixel_aspect_y))
         self.camera.view = np.linalg.inv(np.array(camera.matrix_world))
 
-    def dump_pixels(self, pixels, width, height, is_final=False):
+    def dump_pixels(self, pixels, width, height, is_final):
         use_bilerp = not (width == self.res.x and height == self.res.y)
-        self.output.dump(self.accum.img, use_bilerp, is_final, pixels, width, height)
+        if is_final or bpy.context.scene.seventina_viewport_samples != 1:
+            self.output.dump(self.accum.img, use_bilerp, is_final, pixels, width, height)
+        else:
+            self.output.dump(self.color, use_bilerp, is_final, pixels, width, height)
 
     def invalidate_callback(self, update):
         object = update.id

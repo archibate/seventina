@@ -41,8 +41,8 @@ def register():
     bpy.types.Scene.seventina_smoothing = bpy.props.BoolProperty(name='Smooth shading', default=True, update=on_param_update)
     bpy.types.Scene.seventina_culling = bpy.props.BoolProperty(name='Back face culling', default=True, update=on_param_update)
     bpy.types.Scene.seventina_clipping = bpy.props.BoolProperty(name='Viewbox clipping', default=False, update=on_param_update)
-    bpy.types.Scene.seventina_viewport_samples = bpy.props.IntProperty(name='Viewport Samples', default=1)
-    bpy.types.Scene.seventina_render_samples = bpy.props.IntProperty(name='Render Samples', default=16)
+    bpy.types.Scene.seventina_viewport_samples = bpy.props.IntProperty(name='Viewport Samples', default=8)
+    bpy.types.Scene.seventina_render_samples = bpy.props.IntProperty(name='Render Samples', default=32)
 
     bpy.utils.register_class(SeventinaOptionPanel)
 
