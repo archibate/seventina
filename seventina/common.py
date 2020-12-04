@@ -107,4 +107,4 @@ def lerp(fac, src, dst):
     return src * (1 - fac) + dst * fac
 
 
-from . import tina
+from . import t3

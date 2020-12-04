@@ -68,7 +68,7 @@ class OutputPixelConverter:
         return (b << 16) + (g << 8) + r
 
 
-class BlenderEngine(tina.Engine):
+class BlenderEngine(t3.Engine):
     def __init__(self):
         super().__init__((
             bpy.context.scene.seventina_resolution_x,
@@ -82,11 +82,11 @@ class BlenderEngine(tina.Engine):
 
         self.color = ti.Vector.field(3, float, self.res)
 
-        self.lighting = tina.Lighting(bpy.context.scene.seventina_max_lights)
-        self.material = tina.CookTorrance()
-        self.shader = tina.Shader(self.color, self.lighting, self.material)
-        self.camera = tina.Camera()
-        self.accum = tina.Accumator(self.res)
+        self.lighting = t3.Lighting(bpy.context.scene.seventina_max_lights)
+        self.material = t3.CookTorrance()
+        self.shader = t3.Shader(self.color, self.lighting, self.material)
+        self.camera = t3.Camera()
+        self.accum = t3.Accumator(self.res)
 
     def render_scene(self, is_final):
         self.randomize_bias(self.accum.count[None] == 0)
