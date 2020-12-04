@@ -15,7 +15,7 @@ class OutputPixelConverter:
             if color.n == 1:
                 color = ti.Vector([color(0), color(0), color(0)])
             elif color.n == 2:
-                color = ti.Vector([color(0), color(1), 0])
+                color = ti.Vector([color(0), color(1), 0.])
             elif color.n in [3, 4]:
                 color = ti.Vector([color(0), color(1), color(2)])
             else:
@@ -34,20 +34,24 @@ class OutputPixelConverter:
                 while True:
                     if i >= width:
                         break
-                    r, g, b = 0., 0., 0.
+                    color = V(0., 0., 0.)
                     if ti.static(use_bilerp):
                         scale = ti.Vector(img.shape) / ti.Vector([width, height])
                         pos = ti.Vector([i, j]) * scale
-                        r, g, b = self.cook(bilerp(img, pos))
+                        color = bilerp(img, pos)
                     else:
-                        r, g, b = self.cook(img[i, j])
-                    base = (j * width + i) * 4
-                    out[base + 0] = 128#ce_tonemap(r)
-                    out[base + 1] = 128#ce_tonemap(g)
-                    out[base + 2] = 255#ce_tonemap(b)
-                    out[base + 3] = 255
+                        color = img[i, j]
+                    color = aces_tonemap(color)
+                    out[j * width + i] = self.rgb24(color)
                     i += img.shape[0]
                 j += img.shape[1]
+
+    @staticmethod
+    @ti.func
+    def rgb24(color):
+        alpha = -16777216
+        r, g, b = clamp(int(color * 255 + 0.5), 0, 255)
+        return alpha + (b << 16) + (g << 8) + r
 
 
 class BlenderEngine(tina.Engine):

@@ -20,11 +20,7 @@ def aces_tonemap(color):
 
 @ti.func
 def ce_tonemap(color):
-    return int((1 - ti.exp(-color)) * 255 + 0.5)
-
-
-def ce_untonemap(value):
-    return -np.log(1 - np.float32(value) / 255)
+    return 1 - ti.exp(-color)
 
 
 @ti.func

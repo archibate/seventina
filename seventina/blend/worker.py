@@ -80,7 +80,7 @@ def init_engine():
 
 
 def render_main(width, height, region3d=None):
-    pixels = np.empty(width * height * 4, dtype=np.uint8)
+    pixels = np.empty(width * height, dtype=np.uint32)
 
     @worker.launch
     def result(self):
