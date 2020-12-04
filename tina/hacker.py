@@ -1,7 +1,8 @@
 import taichi as ti
 
 
-setattr(ti, 'static', lambda x, *xs: [x] + list(xs) if xs else x) or setattr(
+hasattr(ti, '_tinahacked') or setattr(ti, '_tinahacked', 1) or setattr(ti,
+        'static', lambda x, *xs: [x] + list(xs) if xs else x) or setattr(
         ti.Matrix, 'element_wise_writeback_binary', (lambda f: lambda x, y, z:
         (y.__name__ != 'assign' or not setattr(y, '__name__', '_assign'))
         and f(x, y, z))(ti.Matrix.element_wise_writeback_binary)) or setattr(
@@ -10,13 +11,13 @@ setattr(ti, 'static', lambda x, *xs: [x] + list(xs) if xs else x) or setattr(
         ) or setattr(ti, 'tau', __import__('math').tau) or setattr(ti, 'GUI',
         (lambda f: __import__('functools').wraps(f)(lambda x='Tina', y=512,
         *z, **w: f(x, tuple(y) if isinstance(y, ti.Matrix) else y, *z, **w)
-        ))(ti.GUI))
+        ))(ti.GUI)) or print('[Tina] Taichi properties hacked')
 
-
-ti.smart = lambda x: x
 
 @eval('lambda x: x()')
 def _():
+    ti.smart = lambda x: x
+
     import copy, ast
     from taichi.lang.transformer import ASTTransformerBase, ASTTransformerPreprocess
 

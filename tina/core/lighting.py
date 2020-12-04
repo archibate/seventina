@@ -4,8 +4,8 @@ from ..common import *
 @ti.data_oriented
 class Lighting:
     def __init__(self, maxlights=16):
-        self.lights = ti.Vector.field(4, float, maxlights)
-        self.light_color = ti.Vector.field(3, float, maxlights)
+        self.light_dirs = ti.Vector.field(4, float, maxlights)
+        self.light_colors = ti.Vector.field(3, float, maxlights)
         self.ambient = ti.Vector.field(3, float, ())
         self.nlights = ti.field(int, ())
 
@@ -13,15 +13,15 @@ class Lighting:
         @ti.kernel
         def init_lights():
             self.nlights[None] = 1
-            self.lights[0] = [0, 0, 1, 0]
-            for i in self.lights:
-                self.light_color[i] = [1, 1, 1]
+            self.light_dirs[0] = [0, 0, 1, 0]
+            for i in self.light_dirs:
+                self.light_colors[i] = [1, 1, 1]
 
-    def set_lights(self, lights):
-        self.nlights[None] = len(lights)
-        for i, (dir, color) in enumerate(lights):
-            self.lights[i] = dir
-            self.light_color[i] = color
+    def set_lights(self, light_dirs):
+        self.nlights[None] = len(light_dirs)
+        for i, (dir, color) in enumerate(light_dirs):
+            self.light_dirs[i] = dir
+            self.light_colors[i] = color
 
     def set_ambient_light(self, color):
         self.ambient[None] = np.array(color).tolist()
@@ -33,7 +33,7 @@ class Lighting:
 
     @ti.func
     def get_light_data(self, l):
-        return self.lights[l], self.light_color[l]
+        return self.light_dirs[l], self.light_colors[l]
 
     @ti.func
     def get_ambient_light_color(self):

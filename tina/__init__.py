@@ -14,7 +14,7 @@ bl_info = {
 __version__ = bl_info['version']
 __author__ = bl_info['author']
 
-print('[Tai3D] version', '.'.join(map(str, __version__)))
+print('[Tina] version', '.'.join(map(str, __version__)))
 
 
 def register():

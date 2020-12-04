@@ -135,8 +135,8 @@ class BlenderEngine(t3.Engine):
         else:
             assert False, f'unsupported light type: {object.data.type}'
 
-        self.lighting.lights[i] = dir.tolist()
-        self.lighting.light_color[i] = color.tolist()
+        self.lighting.light_dirs[i] = dir.tolist()
+        self.lighting.light_colors[i] = color.tolist()
 
     def render_object(self, object):
         verts, norms = self.cache.lookup(blender_get_object_mesh, object)

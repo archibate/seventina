@@ -1,7 +1,7 @@
 from ..common import *
 
 
-print('[Tai3D] Hint: LMB to orbit, RMB to pan, wheel to zoom')
+print('[Tina] Hint: LMB to orbit, RMB to pan, wheel to zoom')
 
 
 class Control:

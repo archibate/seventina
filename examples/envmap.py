@@ -7,8 +7,8 @@ ti.init(ti.opengl)
 
 
 class SkyboxShader(t3.Shader):
-    def __init__(self, color, material=None):
-        self.color = color
+    def __init__(self, img, material=None):
+        self.img = img
         self.material = material
         self.nsamples = 2
 
@@ -22,7 +22,7 @@ class SkyboxShader(t3.Shader):
 
         refl_dir = reflect(-view_dir, normal)
         lcolor = sample_cube(self.skybox, refl_dir)
-        self.color[P] = lcolor
+        self.img[P] = lcolor
 
 
 engine = t3.Engine(smoothing=True)

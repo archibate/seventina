@@ -7,8 +7,8 @@ ti.init(ti.opengl)
 
 
 class SkyboxShader(t3.Shader):
-    def __init__(self, color, material=None):
-        self.color = color
+    def __init__(self, img, material=None):
+        self.img = img
         self.material = material
         self.nsamples = 2
 
@@ -38,7 +38,7 @@ class SkyboxShader(t3.Shader):
 
                 res += cos_i * lcolor * mcolor
 
-        self.color[P] = res
+        self.img[P] = res
 
 
 engine = t3.Engine(smoothing=True)
