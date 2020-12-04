@@ -43,8 +43,9 @@ class Engine:
         self.clipping = clipping
         self.smoothing = smoothing
 
-        self.depth = ti.field(float, self.res)
+        self.depth = ti.field(int, self.res)
         self.occup = ti.field(int, self.res)
+        self.maxdepth = 2**30
 
         self.nfaces = ti.field(int, ())
         self.verts = ti.Vector.field(3, float, (maxfaces, 3))
@@ -111,9 +112,11 @@ class Engine:
                 wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
                 if all(wei >= 0):
                     P = int(pos)
-                    depth = wei.x * Av.z + wei.y * Bv.z + wei.z * Cv.z
+                    depth_f = wei.x * Av.z + wei.y * Bv.z + wei.z * Cv.z
+                    depth = int(depth_f * self.maxdepth)
                     if ti.atomic_min(self.depth[P], depth) > depth:
-                        self.occup[P] = f
+                        if self.depth[P] >= depth:
+                            self.occup[P] = f
 
             self.bcn[f] = bcn
             self.can[f] = can
@@ -149,7 +152,7 @@ class Engine:
     @ti.kernel
     def clear_depth(self):
         for P in ti.grouped(self.depth):
-            self.depth[P] = 1e6
+            self.depth[P] = self.maxdepth
 
     @ti.func
     def interpolate(self, shader: ti.template(), P, f, facing, wei, A, B, C):
