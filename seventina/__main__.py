@@ -1,8 +1,7 @@
 import taichi as ti
 import numpy as np
+import seventina as t3
 import sys
-
-from seventina import t3
 
 ti.init(ti.gpu)
 
