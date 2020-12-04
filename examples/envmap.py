@@ -6,7 +6,7 @@ from tina.core.shader import calc_view_dir
 ti.init(ti.opengl)
 
 
-class SkyboxShader(t3.Shader):
+class SkyboxShader(tina.Shader):
     def __init__(self, img, material=None):
         self.img = img
         self.material = material
@@ -25,19 +25,19 @@ class SkyboxShader(t3.Shader):
         self.img[P] = lcolor
 
 
-engine = t3.Engine(smoothing=True)
-camera = t3.Camera()
+engine = tina.Engine(smoothing=True)
+camera = tina.Camera()
 
 img = ti.Vector.field(3, float, engine.res)
 
 shader = SkyboxShader(img)
 
-obj = t3.readobj('assets/sphere.obj')
+obj = tina.readobj('assets/sphere.obj')
 verts = obj['v'][obj['f'][:, :, 0]]
 norms = obj['vn'][obj['f'][:, :, 2]]
 
 gui = ti.GUI('skybox', engine.res)
-control = t3.Control(gui)
+control = tina.Control(gui)
 
 while gui.running:
     control.get_camera(camera)

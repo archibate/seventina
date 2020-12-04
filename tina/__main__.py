@@ -1,25 +1,25 @@
 import taichi as ti
 import numpy as np
-import tina as t3
+import tina
 import sys
 
 ti.init(ti.gpu)
 
-obj = t3.readobj(sys.argv[1], scale='auto')
+obj = tina.readobj(sys.argv[1], scale='auto')
 verts = obj['v'][obj['f'][:, :, 0]]
 norms = obj['vn'][obj['f'][:, :, 2]]
 
-engine = t3.Engine((1024, 768), maxfaces=len(verts), smoothing=True)
-camera = t3.Camera()
+engine = tina.Engine((1024, 768), maxfaces=len(verts), smoothing=True)
+camera = tina.Camera()
 
 img = ti.Vector.field(3, float, engine.res)
 
-shader = t3.SimpleShader(img)
+shader = tina.SimpleShader(img)
 
 gui = ti.GUI('visualize', engine.res, fast_gui=True)
-control = t3.Control(gui)
+control = tina.Control(gui)
 
-accum = t3.Accumator(engine.res)
+accum = tina.Accumator(engine.res)
 
 while gui.running:
     engine.randomize_bias(accum.count[None] <= 1)

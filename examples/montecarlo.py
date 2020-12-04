@@ -6,7 +6,7 @@ from tina.core.shader import calc_view_dir
 ti.init(ti.opengl)
 
 
-class SkyboxShader(t3.Shader):
+class SkyboxShader(tina.Shader):
     def __init__(self, img, material=None):
         self.img = img
         self.material = material
@@ -41,21 +41,21 @@ class SkyboxShader(t3.Shader):
         self.img[P] = res
 
 
-engine = t3.Engine(smoothing=True)
-camera = t3.Camera()
-accum = t3.Accumator(engine.res)
+engine = tina.Engine(smoothing=True)
+camera = tina.Camera()
+accum = tina.Accumator(engine.res)
 
 img = ti.Vector.field(3, float, engine.res)
 
-material = t3.CookTorrance(metallic=1.0, roughness=0.3)
+material = tina.CookTorrance(metallic=1.0, roughness=0.3)
 shader = SkyboxShader(img, material)
 
-obj = t3.readobj('assets/sphere.obj')
+obj = tina.readobj('assets/sphere.obj')
 verts = obj['v'][obj['f'][:, :, 0]]
 norms = obj['vn'][obj['f'][:, :, 2]]
 
 gui = ti.GUI('skybox', engine.res)
-control = t3.Control(gui)
+control = tina.Control(gui)
 
 metallic = gui.slider('metallic', 0.0, 1.0, 0.1)
 roughness = gui.slider('roughness', 0.0, 1.0, 0.1)
@@ -84,5 +84,5 @@ while gui.running:
 
     accum.update(img)
 
-    gui.set_image(t3.aces_tonemap(accum.img.to_numpy()))
+    gui.set_image(tina.aces_tonemap(accum.img.to_numpy()))
     gui.show()
