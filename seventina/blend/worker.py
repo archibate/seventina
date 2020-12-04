@@ -95,8 +95,6 @@ def render_main(width, height, region3d=None):
 
     worker.wait_done()
 
-    from ..advans import ce_untonemap
-    pixels = ce_untonemap(pixels)
     return pixels
 
 

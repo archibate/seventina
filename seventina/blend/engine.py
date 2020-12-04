@@ -42,10 +42,10 @@ class OutputPixelConverter:
                     else:
                         r, g, b = self.cook(img[i, j])
                     base = (j * width + i) * 4
-                    out[base + 0] = ce_tonemap(r)
-                    out[base + 1] = ce_tonemap(g)
-                    out[base + 2] = ce_tonemap(b)
-                    out[base + 3] = 1
+                    out[base + 0] = 128#ce_tonemap(r)
+                    out[base + 1] = 128#ce_tonemap(g)
+                    out[base + 2] = 255#ce_tonemap(b)
+                    out[base + 3] = 255
                     i += img.shape[0]
                 j += img.shape[1]
 

@@ -92,6 +92,64 @@ class SeventinaRenderEngine(bpy.types.RenderEngine):
         bgl.glDisable(bgl.GL_BLEND)
 
 
+def compile_shader(type, source):
+    shader = bgl.glCreateShader(type)
+    bgl.glShaderSource(shader, source)
+    bgl.glCompileShader(shader)
+    status = bgl.Buffer(bgl.GL_INT, 1)
+    bgl.glGetShaderiv(shader, bgl.GL_COMPILE_STATUS, status)
+    if status[0] != bgl.GL_TRUE:
+        infoLog = bgl.Buffer(bgl.GL_BYTE, 1024)
+        length = bgl.Buffer(bgl.GL_INT, 1)
+        bgl.glGetShaderInfoLog(shader, 1024, length, infoLog)
+        raise RuntimeError(''.join(chr(infoLog[i]) for i in range(length[0])))
+    return shader
+
+
+def create_program(*shaders):
+    program = bgl.glCreateProgram()
+    for shader in shaders:
+        bgl.glAttachShader(program, shader)
+    bgl.glLinkProgram(program)
+    status = bgl.Buffer(bgl.GL_INT, 1)
+    bgl.glGetProgramiv(program, bgl.GL_LINK_STATUS, status)
+    if status[0] != bgl.GL_TRUE:
+        infoLog = bgl.Buffer(bgl.GL_BYTE, 1024)
+        length = bgl.Buffer(bgl.GL_INT, 1)
+        bgl.glGetProgramInfoLog(program, 1024, length, infoLog)
+        raise RuntimeError(''.join(chr(infoLog[i]) for i in range(length[0])))
+    return program
+
+
+my_program = create_program(
+compile_shader(bgl.GL_VERTEX_SHADER, '''
+#version 330 core
+
+in vec2 pos;
+in vec2 texCoord;
+out vec2 fragCoord;
+
+void main()
+{
+    fragCoord = texCoord;
+    gl_Position = vec4(texCoord * 2 - 1, 0.0, 1.0);
+}
+'''),
+compile_shader(bgl.GL_FRAGMENT_SHADER, '''
+#version 330 core
+
+in vec2 fragCoord;
+out vec4 fragColor;
+
+uniform sampler2D tex0;
+
+void main()
+{
+    fragColor = texture2D(tex0, fragCoord);
+}
+'''))
+
+
 class CustomDrawData:
     def __init__(self, dimensions, perspective, region3d):
         self.dimensions = dimensions
@@ -102,17 +160,19 @@ class CustomDrawData:
         pixels = worker.render_main(width, height, region3d)
 
         # Generate dummy float image buffer
-        pixels = bgl.Buffer(bgl.GL_FLOAT, width * height * 4, pixels)
+        pixels = bgl.Buffer(bgl.GL_BYTE, width * height * 4, pixels)
 
         # Generate texture
         self.texture = bgl.Buffer(bgl.GL_INT, 1)
         bgl.glGenTextures(1, self.texture)
         bgl.glActiveTexture(bgl.GL_TEXTURE0)
         bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.texture[0])
-        bgl.glTexImage2D(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA16F, width, height, 0, bgl.GL_RGBA, bgl.GL_FLOAT, pixels)
+        bgl.glTexImage2D(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA, width, height, 0, bgl.GL_RGBA, bgl.GL_BYTE, pixels)
         bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_LINEAR)
         bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_LINEAR)
         bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
+
+        bgl.glUseProgram(my_program)
 
         # Bind shader that converts from scene linear to display space,
         # use the scene's color management settings.
@@ -158,6 +218,7 @@ class CustomDrawData:
         bgl.glDeleteTextures(1, self.texture)
 
     def draw(self):
+        bgl.glUseProgram(my_program)
         bgl.glActiveTexture(bgl.GL_TEXTURE0)
         bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.texture[0])
         bgl.glBindVertexArray(self.vertex_array[0])
