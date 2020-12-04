@@ -32,16 +32,16 @@ class TaichiWorkerMT:
                 continue
 
             try:
-                func(self)
+                resptr[0] = func(self)
             except Exception:
                 msg = traceback.format_exc()
                 print('Exception while running task:\n' + msg)
-                resptr[0] = msg
+                resptr[1] = msg
 
             self.q.task_done()
 
     def launch(self, func):
-        resptr = [None]
+        resptr = [None, None]
         self.q.put((func, resptr), block=True, timeout=None)
         return resptr
 
@@ -58,12 +58,12 @@ class TaichiWorker:
 
     def launch(self, func):
         try:
-            func(self)
+            ret = func(self)
         except Exception:
             msg = traceback.format_exc()
             print('Exception while running task:\n' + msg)
-            return [msg]
-        return [None]
+            return [None, msg]
+        return [ret, None]
 
     def wait_done(self):
         pass
@@ -77,6 +77,17 @@ def init_engine():
 
     from .engine import BlenderEngine
     return BlenderEngine()
+
+
+def trigger_redraw():
+    print('trigger_redraw')
+    if '_triggerdummyobj' in bpy.data.objects:
+        bpy.data.objects.remove(bpy.data.objects['_triggerdummyobj'])
+    if '_triggerdummymesh' in bpy.data.meshes:
+        bpy.data.meshes.remove(bpy.data.meshes['_triggerdummymesh'])
+    mesh = bpy.data.meshes.new('_triggerdummymesh')
+    object = bpy.data.objects.new('_triggerdummyobj', mesh)
+    bpy.context.collection.objects.link(object)
 
 
 def render_main(width, height, region3d=None):
@@ -96,8 +107,15 @@ def render_main(width, height, region3d=None):
         else:
             self.engine.update_region_data(region3d)
         self.engine.render_pixels(pixels, width, height, is_final)
+        if self.engine.is_need_redraw():
+            return 'redraw'
+        else:
+            return 'finish'
 
     worker.wait_done()
+
+    if result[0] == 'redraw':
+        trigger_redraw()
 
     return pixels
 

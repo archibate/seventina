@@ -113,6 +113,9 @@ class BlenderEngine(tina.Engine):
 
         self.accum.update(self.color)
 
+    def is_need_redraw(self):
+        return self.accum.count[None] < 32
+
     def update_light(self, i, object):
         color = np.array(object.data.color) * object.data.energy / 4
         model = np.array(object.matrix_world)
@@ -168,7 +171,6 @@ class BlenderEngine(tina.Engine):
 def bmesh_verts_to_numpy(bm):
     arr = [x.co for x in bm.verts]
     if len(arr) == 0:
-        print('Warning: no vertices!')
         return np.zeros((0, 3), dtype=np.float32)
     return np.array(arr, dtype=np.float32)
 
@@ -176,7 +178,6 @@ def bmesh_verts_to_numpy(bm):
 def bmesh_faces_to_numpy(bm):
     arr = [[e.index for e in f.verts] for f in bm.faces]
     if len(arr) == 0:
-        print('Warning: no faces!')
         return np.zeros((0, 3), dtype=np.int32)
     return np.array(arr, dtype=np.int32)
 
