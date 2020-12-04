@@ -86,8 +86,10 @@ class BlenderEngine(tina.Engine):
         self.material = tina.CookTorrance()
         self.shader = tina.Shader(self.color, self.lighting, self.material)
         self.camera = tina.Camera()
+        self.accum = tina.Accumator(self.res)
 
     def render_scene(self):
+        self.randomize_bias()
         self.clear_depth()
         self.color.fill(0)
 
@@ -108,6 +110,8 @@ class BlenderEngine(tina.Engine):
 
         for object in meshes:
             self.render_object(object)
+
+        self.accum.update(self.color)
 
     def update_light(self, i, object):
         color = np.array(object.data.color) * object.data.energy / 4
@@ -153,7 +157,7 @@ class BlenderEngine(tina.Engine):
     def render_pixels(self, pixels, width, height, is_final=False):
         self.render_scene()
         use_bilerp = not (width == self.res.x and height == self.res.y)
-        self.output.dump(self.color, use_bilerp, is_final, pixels, width, height)
+        self.output.dump(self.accum.img, use_bilerp, is_final, pixels, width, height)
 
     def invalidate_callback(self, update):
         object = update.id

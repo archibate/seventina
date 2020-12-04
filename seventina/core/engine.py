@@ -61,6 +61,8 @@ class Engine:
         self.L2W = ti.Matrix.field(4, 4, float, ())
         self.V2W = ti.Matrix.field(4, 4, float, ())
 
+        self.bias = ti.Vector.field(2, float, ())
+
         @ti.materialize_callback
         @ti.kernel
         def init_engine():
@@ -69,8 +71,12 @@ class Engine:
             self.L2V[None][2, 2] = -1
             self.V2W[None] = ti.Matrix.identity(float, 4)
             self.V2W[None][2, 2] = -1
+            self.bias[None] = [0.5, 0.5]
 
         ti.materialize_callback(self.clear_depth)
+
+    def randomize_bias(self):
+        self.bias[None] = np.random.rand(2).tolist()
 
     @ti.func
     def to_viewspace(self, p):
@@ -106,7 +112,7 @@ class Engine:
             bcn = (b - c) / n
             can = (c - a) / n
             for i, j in ti.ndrange((bot.x, top.x + 1), (bot.y, top.y + 1)):
-                pos = float(V(i, j)) + 0.5
+                pos = float(V(i, j)) + self.bias[None]
                 w_bc = (pos - b).cross(bcn)
                 w_ca = (pos - c).cross(can)
                 wei = V(w_bc, w_ca, 1 - w_bc - w_ca)
@@ -136,7 +142,7 @@ class Engine:
             can = self.can[f]
             b = self.boo[f]
             c = self.coo[f]
-            pos = float(P) + 0.5
+            pos = float(P) + self.bias[None]
             w_bc = (pos - b).cross(bcn)
             w_ca = (pos - c).cross(can)
             wei = V(w_bc, w_ca, 1 - w_bc - w_ca)

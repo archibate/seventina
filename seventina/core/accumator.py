@@ -3,7 +3,7 @@ from ..common import *
 
 @ti.data_oriented
 class Accumator:
-    def __init__(self, res=(512, 512)):
+    def __init__(self, res):
         self.img = ti.Vector.field(3, float, res)
         self.count = ti.field(int, ())
 
