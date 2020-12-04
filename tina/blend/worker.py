@@ -72,7 +72,7 @@ class TaichiWorker:
 
 def init_engine():
     import taichi as ti
-    backend = getattr(ti, bpy.context.scene.seventina_backend.lower())
+    backend = getattr(ti, bpy.context.scene.tina_backend.lower())
     ti.init(arch=backend)
 
     from .engine import BlenderEngine
@@ -102,7 +102,7 @@ def render_main(width, height, region3d=None):
         if not hasattr(self, 'engine'):
             self.engine = init_engine()
 
-        if bpy.context.scene.seventina_viewport_samples != 1:
+        if bpy.context.scene.tina_viewport_samples != 1:
             if not hasattr(worker, 'is_triggered'):
                 self.engine.clear_samples()
             else:
@@ -114,7 +114,7 @@ def render_main(width, height, region3d=None):
             self.engine.update_region_data(region3d)
 
         if is_final:
-            for i in range(bpy.context.scene.seventina_render_samples):
+            for i in range(bpy.context.scene.tina_render_samples):
                 self.engine.render_scene(is_final)
         else:
             self.engine.render_scene(is_final)
@@ -129,7 +129,7 @@ def render_main(width, height, region3d=None):
     worker.wait_done()
 
     if result[0] is True:
-        if bpy.context.scene.seventina_viewport_samples != 1:
+        if bpy.context.scene.tina_viewport_samples != 1:
             trigger_redraw()
 
     return pixels
@@ -138,7 +138,7 @@ def render_main(width, height, region3d=None):
 def invalidate_main(updates, viewport_changed):
     @worker.launch
     def result(self):
-        if bpy.context.scene.seventina_viewport_samples != 1:
+        if bpy.context.scene.tina_viewport_samples != 1:
             hasattr(self, 'is_triggered') and delattr(self, 'is_triggered') if viewport_changed or not hasattr(invalidate_main, 'cac_old_frame_current') or bpy.context.scene.frame_current != invalidate_main.cac_old_frame_current or not all(getattr(u.id, 'name', '').startswith('_triggerdummy') for u in updates if type(u.id).__name__ not in ['Scene', 'Collection']) or all(type(u.id).__name__ in ['Scene', 'Collection'] for u in updates) else 1
             invalidate_main.cac_old_frame_current = bpy.context.scene.frame_current
 

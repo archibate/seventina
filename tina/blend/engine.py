@@ -71,18 +71,18 @@ class OutputPixelConverter:
 class BlenderEngine(t3.Engine):
     def __init__(self):
         super().__init__((
-            bpy.context.scene.seventina_resolution_x,
-            bpy.context.scene.seventina_resolution_y),
-            bpy.context.scene.seventina_max_faces,
-            bpy.context.scene.seventina_smoothing,
-            bpy.context.scene.seventina_culling,
-            bpy.context.scene.seventina_clipping)
+            bpy.context.scene.tina_resolution_x,
+            bpy.context.scene.tina_resolution_y),
+            bpy.context.scene.tina_max_faces,
+            bpy.context.scene.tina_smoothing,
+            bpy.context.scene.tina_culling,
+            bpy.context.scene.tina_clipping)
         self.output = OutputPixelConverter()
         self.cache = IDCache()
 
         self.color = ti.Vector.field(3, float, self.res)
 
-        self.lighting = t3.Lighting(bpy.context.scene.seventina_max_lights)
+        self.lighting = t3.Lighting(bpy.context.scene.tina_max_lights)
         self.material = t3.CookTorrance()
         self.shader = t3.Shader(self.color, self.lighting, self.material)
         self.camera = t3.Camera()
@@ -111,17 +111,17 @@ class BlenderEngine(t3.Engine):
         for object in meshes:
             self.render_object(object)
 
-        if is_final or bpy.context.scene.seventina_viewport_samples != 1:
+        if is_final or bpy.context.scene.tina_viewport_samples != 1:
             self.accum.update(self.color)
 
     def clear_samples(self):
-        if bpy.context.scene.seventina_viewport_samples != 1:
+        if bpy.context.scene.tina_viewport_samples != 1:
             self.accum.clear()
         else:
             self.accum.count[None] = 0
 
     def is_need_redraw(self):
-        return self.accum.count[None] < bpy.context.scene.seventina_viewport_samples
+        return self.accum.count[None] < bpy.context.scene.tina_viewport_samples
 
     def update_light(self, i, object):
         color = np.array(object.data.color) * object.data.energy / 4
@@ -168,7 +168,7 @@ class BlenderEngine(t3.Engine):
 
     def dump_pixels(self, pixels, width, height, is_final):
         use_bilerp = not (width == self.res.x and height == self.res.y)
-        if is_final or bpy.context.scene.seventina_viewport_samples != 1:
+        if is_final or bpy.context.scene.tina_viewport_samples != 1:
             self.output.dump(self.accum.img, use_bilerp, is_final, pixels, width, height)
         else:
             self.output.dump(self.color, use_bilerp, is_final, pixels, width, height)

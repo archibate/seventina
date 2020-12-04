@@ -1,10 +1,10 @@
 bl_info = {
-        'name': 'Seventina (dev mode)',
+        'name': 'Tina (dev mode)',
         'description': 'A soft-renderer based on Taichi programming language',
         'author': '彭于斌 <1931127624@qq.com>',
         'version': (0, 0, 0),
         'blender': (2, 81, 0),
-        'location': 'Render -> Seventina Options',
+        'location': 'Render -> Tina Options',
         'support': 'TESTING',
         'wiki_url': 'https://github.com/archibate/tina/wiki',
         'tracker_url': 'https://github.com/archibate/tina/issues',
@@ -48,7 +48,7 @@ registered = False
 
 
 def register():
-    print('Seventina-Dev register...')
+    print('Tina-Dev register...')
     import tina
     tina.register()
 
@@ -58,7 +58,7 @@ def register():
 
 
 def unregister():
-    print('Seventina-Dev unregister...')
+    print('Tina-Dev unregister...')
     import tina
     tina.unregister()
 

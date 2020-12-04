@@ -4,11 +4,11 @@ import bgl
 from . import worker, ui
 
 
-class SeventinaRenderEngine(bpy.types.RenderEngine):
+class TinaRenderEngine(bpy.types.RenderEngine):
     # These custom members are used by blender to set up the
     # RenderEngine; define its internal name, visible name and capabilities.
-    bl_idname = "SEVENTINA"
-    bl_label = "Seventina"
+    bl_idname = "TINA"
+    bl_label = "Tina"
     bl_use_preview = True
 
     # Init is called whenever a new render engine instance is created. Multiple
@@ -160,8 +160,8 @@ void main()
         self.dimensions = dimensions
         self.perspective = perspective
 
-        width = bpy.context.scene.seventina_resolution_x
-        height = bpy.context.scene.seventina_resolution_y
+        width = bpy.context.scene.tina_resolution_x
+        height = bpy.context.scene.tina_resolution_y
         pixels = worker.render_main(width, height, region3d)
 
         # Generate dummy image buffer
@@ -250,21 +250,21 @@ def get_panels():
 
 
 def register():
-    bpy.utils.register_class(SeventinaRenderEngine)
+    bpy.utils.register_class(TinaRenderEngine)
 
     for panel in get_panels():
-        panel.COMPAT_ENGINES.add('SEVENTINA')
+        panel.COMPAT_ENGINES.add('TINA')
 
     ui.register()
     worker.register()
 
 
 def unregister():
-    bpy.utils.unregister_class(SeventinaRenderEngine)
+    bpy.utils.unregister_class(TinaRenderEngine)
 
     for panel in get_panels():
-        if 'SEVENTINA' in panel.COMPAT_ENGINES:
-            panel.COMPAT_ENGINES.remove('SEVENTINA')
+        if 'TINA' in panel.COMPAT_ENGINES:
+            panel.COMPAT_ENGINES.remove('TINA')
 
     worker.unregister()
     ui.unregister()
