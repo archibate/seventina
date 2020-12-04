@@ -117,7 +117,7 @@ class BlenderEngine(tina.Engine):
         self.accum.clear()
 
     def is_need_redraw(self):
-        return self.accum.count[None] < 16
+        return self.accum.count[None] < bpy.context.scene.seventina_viewport_samples
 
     def update_light(self, i, object):
         color = np.array(object.data.color) * object.data.energy / 4

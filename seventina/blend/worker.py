@@ -112,7 +112,12 @@ def render_main(width, height, region3d=None):
         else:
             self.engine.update_region_data(region3d)
 
-        self.engine.render_scene()
+        if is_final:
+            for i in range(bpy.context.scene.seventina_render_samples):
+                self.engine.render_scene()
+        else:
+            self.engine.render_scene()
+
         self.engine.dump_pixels(pixels, width, height, is_final)
 
         if is_final or not self.engine.is_need_redraw():
@@ -131,8 +136,7 @@ def render_main(width, height, region3d=None):
 def invalidate_main(updates, viewport_changed):
     @worker.launch
     def result(self):
-        if viewport_changed or bpy.context.scene.frame_current != invalidate_main.cac_old_frame_current or not hasattr(invalidate_main, 'cac_old_frame_current') or not all(getattr(u.id, 'name', '').startswith('_triggerdummy') for u in updates if type(u.id).__name__ not in ['Scene', 'Collection']) or all(type(u.id).__name__ in ['Scene', 'Collection'] for u in updates):
-            hasattr(self, 'is_triggered') and delattr(self, 'is_triggered')
+        hasattr(self, 'is_triggered') and delattr(self, 'is_triggered') if viewport_changed or bpy.context.scene.frame_current != invalidate_main.cac_old_frame_current or not hasattr(invalidate_main, 'cac_old_frame_current') or not all(getattr(u.id, 'name', '').startswith('_triggerdummy') for u in updates if type(u.id).__name__ not in ['Scene', 'Collection']) or all(type(u.id).__name__ in ['Scene', 'Collection'] for u in updates) else 1
         invalidate_main.cac_old_frame_current = bpy.context.scene.frame_current
 
         for update in updates:
