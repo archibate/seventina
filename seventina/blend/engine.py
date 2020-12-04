@@ -22,36 +22,44 @@ class OutputPixelConverter:
                 assert False, color.n
         return color
 
+    @ti.func
+    def dump_body(self, img: ti.template(), use_bilerp: ti.template(),
+            is_final: ti.template(), out: ti.template(), i, j, width, height):
+        color = V(0., 0., 0.)
+        if ti.static(use_bilerp):
+            scale = ti.Vector(img.shape) / ti.Vector([width, height])
+            pos = ti.Vector([i, j]) * scale
+            color = bilerp(img, pos)
+        else:
+            color = img[i, j]
+        color = aces_tonemap(color)
+        if ti.static(is_final):
+            base = (j * width + i) * 4
+            out[base + 0] = color.x
+            out[base + 1] = color.y
+            out[base + 2] = color.z
+            out[base + 3] = 1
+        else:
+            out[j * width + i] = self.rgb24(color)
+
     @ti.kernel
     def dump(self, img: ti.template(), use_bilerp: ti.template(),
             is_final: ti.template(), out: ti.ext_arr(), width: int, height: int):
         for ii, jj in ti.ndrange(img.shape[0], img.shape[1]):
-            j = jj
-            while True:
-                if j >= height:
-                    break
-                i = ii
+            if ti.static(not use_bilerp):
+                self.dump_body(img, False, is_final, out, ii, jj, width, height)
+            else:
+                j = jj
                 while True:
-                    if i >= width:
+                    if j >= height:
                         break
-                    color = V(0., 0., 0.)
-                    if ti.static(use_bilerp):
-                        scale = ti.Vector(img.shape) / ti.Vector([width, height])
-                        pos = ti.Vector([i, j]) * scale
-                        color = bilerp(img, pos)
-                    else:
-                        color = img[i, j]
-                    color = aces_tonemap(color)
-                    if ti.static(is_final):
-                        base = (j * width + i) * 4
-                        out[base + 0] = color.x
-                        out[base + 1] = color.y
-                        out[base + 2] = color.z
-                        out[base + 3] = 1
-                    else:
-                        out[j * width + i] = self.rgb24(color)
-                    i += img.shape[0]
-                j += img.shape[1]
+                    i = ii
+                    while True:
+                        if i >= width:
+                            break
+                        self.dump_body(img, True, is_final, out, i, j, width, height)
+                        i += img.shape[0]
+                    j += img.shape[1]
 
     @staticmethod
     @ti.func
