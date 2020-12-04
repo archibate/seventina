@@ -80,7 +80,6 @@ def init_engine():
 
 
 def trigger_redraw():
-    print('trigger_redraw')
     if '_triggerdummyobj' in bpy.data.objects:
         bpy.data.objects.remove(bpy.data.objects['_triggerdummyobj'])
     if '_triggerdummymesh' in bpy.data.meshes:
@@ -88,6 +87,7 @@ def trigger_redraw():
     mesh = bpy.data.meshes.new('_triggerdummymesh')
     object = bpy.data.objects.new('_triggerdummyobj', mesh)
     bpy.context.collection.objects.link(object)
+    worker.is_triggered = True
 
 
 def render_main(width, height, region3d=None):
@@ -102,27 +102,41 @@ def render_main(width, height, region3d=None):
         if not hasattr(self, 'engine'):
             self.engine = init_engine()
 
+        if not hasattr(worker, 'is_triggered'):
+            print('clear_samples')
+            self.engine.clear_samples()
+        else:
+            print('is_triggered')
+            del self.is_triggered
+
         if is_final:
             self.engine.update_default_camera()
         else:
             self.engine.update_region_data(region3d)
-        self.engine.render_pixels(pixels, width, height, is_final)
-        if self.engine.is_need_redraw():
-            return 'redraw'
-        else:
-            return 'finish'
+
+        self.engine.render_scene()
+        self.engine.dump_pixels(pixels, width, height, is_final)
+
+        if is_final or not self.engine.is_need_redraw():
+            return False
+
+        return True
 
     worker.wait_done()
 
-    if result[0] == 'redraw':
+    if result[0] is True:
         trigger_redraw()
 
     return pixels
 
 
-def invalidate_main(updates):
+def invalidate_main(updates, viewport_changed):
     @worker.launch
     def result(self):
+        if viewport_changed or bpy.context.scene.frame_current != invalidate_main.cac_old_frame_current or not hasattr(invalidate_main, 'cac_old_frame_current') or not all(getattr(u.id, 'name', '').startswith('_triggerdummy') for u in updates if type(u.id).__name__ not in ['Scene', 'Collection']) or all(type(u.id).__name__ in ['Scene', 'Collection'] for u in updates):
+            hasattr(self, 'is_triggered') and delattr(self, 'is_triggered')
+        invalidate_main.cac_old_frame_current = bpy.context.scene.frame_current
+
         for update in updates:
             self.engine.invalidate_callback(update)
 

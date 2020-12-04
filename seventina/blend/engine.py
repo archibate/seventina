@@ -113,8 +113,11 @@ class BlenderEngine(tina.Engine):
 
         self.accum.update(self.color)
 
+    def clear_samples(self):
+        self.accum.clear()
+
     def is_need_redraw(self):
-        return self.accum.count[None] < 32
+        return self.accum.count[None] < 16
 
     def update_light(self, i, object):
         color = np.array(object.data.color) * object.data.energy / 4
@@ -157,8 +160,7 @@ class BlenderEngine(tina.Engine):
             scale_x=render.pixel_aspect_x, scale_y=render.pixel_aspect_y))
         self.camera.view = np.linalg.inv(np.array(camera.matrix_world))
 
-    def render_pixels(self, pixels, width, height, is_final=False):
-        self.render_scene()
+    def dump_pixels(self, pixels, width, height, is_final=False):
         use_bilerp = not (width == self.res.x and height == self.res.y)
         self.output.dump(self.accum.img, use_bilerp, is_final, pixels, width, height)
 

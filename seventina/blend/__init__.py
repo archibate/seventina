@@ -49,13 +49,17 @@ class SeventinaRenderEngine(bpy.types.RenderEngine):
     # should be read from Blender in the same thread. Typically a render
     # thread will be started to do the work while keeping Blender responsive.
     def view_update(self, context, depsgraph):
-        print('view_update')
+        # print('view_update')
         region = context.region
         view3d = context.space_data
+        region3d = context.region_data
         scene = depsgraph.scene
+        perspective = region3d.perspective_matrix.to_4x4()
+
+        viewport_changed = [self.draw_data is None or not hasattr(self, '_cac_old_perspective') or self.draw_data.perspective != self._cac_old_perspective, setattr(self, '_cac_old_perspective', perspective)][0]
 
         # Get viewport dimensions
-        worker.invalidate_main(depsgraph.updates)
+        worker.invalidate_main(depsgraph.updates, viewport_changed)
 
         self.updated = True
 
@@ -65,7 +69,7 @@ class SeventinaRenderEngine(bpy.types.RenderEngine):
     # Blender will draw overlays for selection and editing on top of the
     # rendered image automatically.
     def view_draw(self, context, depsgraph):
-        print('view_draw')
+        # print('view_draw')
         region = context.region
         region3d = context.region_data
         scene = depsgraph.scene
