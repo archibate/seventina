@@ -75,8 +75,16 @@ class Engine:
 
         ti.materialize_callback(self.clear_depth)
 
-    def randomize_bias(self):
-        self.bias[None] = np.random.rand(2).tolist()
+    @ti.kernel
+    def randomize_bias(self, center: ti.template()):
+        if ti.static(center):
+            self.bias[None] = [0.5, 0.5]
+        else:
+            #r = ti.sqrt(ti.random())
+            #a = ti.random() * ti.tau
+            #x, y = r * ti.cos(a) * 0.5 + 0.5, r * ti.sin(a) * 0.5 + 0.5
+            x, y = ti.random(), ti.random()
+            self.bias[None] = [x, y]
 
     @ti.func
     def to_viewspace(self, p):

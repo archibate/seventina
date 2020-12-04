@@ -103,10 +103,8 @@ def render_main(width, height, region3d=None):
             self.engine = init_engine()
 
         if not hasattr(worker, 'is_triggered'):
-            print('clear_samples')
             self.engine.clear_samples()
         else:
-            print('is_triggered')
             del self.is_triggered
 
         if is_final:

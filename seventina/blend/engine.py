@@ -89,7 +89,7 @@ class BlenderEngine(tina.Engine):
         self.accum = tina.Accumator(self.res)
 
     def render_scene(self):
-        self.randomize_bias()
+        self.randomize_bias(self.accum.count[None] == 0)
         self.clear_depth()
         self.color.fill(0)
 
