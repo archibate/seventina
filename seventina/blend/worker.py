@@ -80,18 +80,22 @@ def init_engine():
 
 
 def render_main(width, height, region3d=None):
-    pixels = np.empty(width * height, dtype=np.uint32)
+    is_final = region3d is None
+    if is_final:
+        pixels = np.empty((width * height * 4), dtype=np.float32)
+    else:
+        pixels = np.empty(width * height, dtype=np.uint32)
 
     @worker.launch
     def result(self):
         if not hasattr(self, 'engine'):
             self.engine = init_engine()
 
-        if region3d is None:
+        if is_final:
             self.engine.update_default_camera()
         else:
             self.engine.update_region_data(region3d)
-        self.engine.render_pixels(pixels, width, height)
+        self.engine.render_pixels(pixels, width, height, is_final)
 
     worker.wait_done()
 
@@ -120,7 +124,7 @@ worker = None
 
 def register():
     global worker
-    worker = TaichiWorker()
+    worker = TaichiWorkerMT()
 
 
 def unregister():

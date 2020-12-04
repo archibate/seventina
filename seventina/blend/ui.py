@@ -31,7 +31,7 @@ def on_param_update(self, context):
 
 
 def register():
-    bpy.types.Scene.seventina_backend = bpy.props.EnumProperty(name='Backend', items=[(item.upper(), item, '') for item in ['CPU', 'GPU', 'CUDA', 'OpenCL', 'OpenGL', 'Metal', 'CC']], update=on_param_update)
+    bpy.types.Scene.seventina_backend = bpy.props.EnumProperty(name='Backend', items=[(item.upper(), item, '') for item in ['CPU', 'GPU', 'CUDA', 'OpenGL', 'Metal', 'CC']], update=on_param_update)
     bpy.types.Scene.seventina_resolution_x = bpy.props.IntProperty(name='Resolution X', min=1, soft_min=1, subtype='PIXEL', default=1024, update=on_param_update)
     bpy.types.Scene.seventina_resolution_y = bpy.props.IntProperty(name='Resolution Y', min=1, soft_min=1, subtype='PIXEL', default=768, update=on_param_update)
     bpy.types.Scene.seventina_max_faces = bpy.props.IntProperty(name='Max Faces Count', min=1, soft_min=1, default=65536, update=on_param_update)

@@ -24,7 +24,7 @@ class OutputPixelConverter:
 
     @ti.kernel
     def dump(self, img: ti.template(), use_bilerp: ti.template(),
-            out: ti.ext_arr(), width: int, height: int):
+            is_final: ti.template(), out: ti.ext_arr(), width: int, height: int):
         for ii, jj in ti.ndrange(img.shape[0], img.shape[1]):
             j = jj
             while True:
@@ -42,16 +42,22 @@ class OutputPixelConverter:
                     else:
                         color = img[i, j]
                     color = aces_tonemap(color)
-                    out[j * width + i] = self.rgb24(color)
+                    if ti.static(is_final):
+                        base = (j * width + i) * 4
+                        out[base + 0] = color.x
+                        out[base + 1] = color.y
+                        out[base + 2] = color.z
+                        out[base + 3] = 1
+                    else:
+                        out[j * width + i] = self.rgb24(color)
                     i += img.shape[0]
                 j += img.shape[1]
 
     @staticmethod
     @ti.func
     def rgb24(color):
-        alpha = -16777216
         r, g, b = clamp(int(color * 255 + 0.5), 0, 255)
-        return alpha + (b << 16) + (g << 8) + r
+        return (b << 16) + (g << 8) + r
 
 
 class BlenderEngine(tina.Engine):
@@ -134,10 +140,10 @@ class BlenderEngine(tina.Engine):
             scale_x=render.pixel_aspect_x, scale_y=render.pixel_aspect_y))
         self.camera.view = np.linalg.inv(np.array(camera.matrix_world))
 
-    def render_pixels(self, pixels, width, height):
+    def render_pixels(self, pixels, width, height, is_final=False):
         self.render_scene()
         use_bilerp = not (width == self.res.x and height == self.res.y)
-        self.output.dump(self.color, use_bilerp, pixels, width, height)
+        self.output.dump(self.color, use_bilerp, is_final, pixels, width, height)
 
     def invalidate_callback(self, update):
         object = update.id
