@@ -120,9 +120,11 @@ class BlenderEngine(tina.Engine):
         self.camera.model = np.array(object.matrix_world)
         self.set_camera(self.camera)
 
-        verts = self.cache.lookup(blender_get_object_mesh, object)
+        verts, norms = self.cache.lookup(blender_get_object_mesh, object)
 
         self.set_face_verts(verts)
+        if self.smoothing:
+            self.set_face_norms(norms)
         self.render(self.shader)
 
     def update_region_data(self, region3d):
@@ -160,11 +162,26 @@ def bmesh_verts_to_numpy(bm):
 
 
 def bmesh_faces_to_numpy(bm):
-    arr = [[y.index for y in x.verts] for x in bm.faces]
+    arr = [[e.index for e in f.verts] for f in bm.faces]
     if len(arr) == 0:
         print('Warning: no faces!')
         return np.zeros((0, 3), dtype=np.int32)
     return np.array(arr, dtype=np.int32)
+
+
+def bmesh_face_norms_to_numpy(bm):
+    vnorms = [x.normal for x in bm.verts]
+    if len(vnorms) == 0:
+        vnorms = np.zeros((0, 3), dtype=np.float32)
+    else:
+        vnorms = np.array(vnorms)
+    norms = [
+        [vnorms[e.index] for e in f.verts]
+        if f.smooth else [f.normal for e in f.verts]
+        for f in bm.faces]
+    if len(norms) == 0:
+        return np.zeros((0, 3, 3), dtype=np.float32)
+    return np.array(norms, dtype=np.float32)
 
 
 def blender_get_object_mesh(object):
@@ -174,6 +191,6 @@ def blender_get_object_mesh(object):
     object_eval = object.evaluated_get(depsgraph)
     bm.from_object(object_eval, depsgraph)
     bmesh.ops.triangulate(bm, faces=bm.faces)
-    verts = bmesh_verts_to_numpy(bm)
-    faces = bmesh_faces_to_numpy(bm)
-    return verts[faces]
+    verts = bmesh_verts_to_numpy(bm)[bmesh_faces_to_numpy(bm)]
+    norms = bmesh_face_norms_to_numpy(bm)
+    return verts, norms

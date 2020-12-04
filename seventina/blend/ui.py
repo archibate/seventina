@@ -36,7 +36,7 @@ def register():
     bpy.types.Scene.seventina_resolution_y = bpy.props.IntProperty(name='Resolution Y', min=1, soft_min=1, subtype='PIXEL', default=768, update=on_param_update)
     bpy.types.Scene.seventina_max_faces = bpy.props.IntProperty(name='Max Faces Count', min=1, soft_min=1, default=65536, update=on_param_update)
     bpy.types.Scene.seventina_max_lights = bpy.props.IntProperty(name='Max Lights Count', min=1, soft_min=1, default=16, update=on_param_update)
-    bpy.types.Scene.seventina_smoothing = bpy.props.BoolProperty(name='Smooth shading', default=False, update=on_param_update)
+    bpy.types.Scene.seventina_smoothing = bpy.props.BoolProperty(name='Smooth shading', default=True, update=on_param_update)
     bpy.types.Scene.seventina_culling = bpy.props.BoolProperty(name='Back face culling', default=True, update=on_param_update)
     bpy.types.Scene.seventina_clipping = bpy.props.BoolProperty(name='Viewbox clipping', default=False, update=on_param_update)
 
