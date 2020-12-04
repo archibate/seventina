@@ -1,6 +1,6 @@
 import taichi as ti
 import numpy as np
-import seventina as t3
+import tina as t3
 
 ti.init(ti.opengl)
 

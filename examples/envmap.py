@@ -1,6 +1,6 @@
-from seventina.common import *
-from seventina.advans import *
-from seventina.core.shader import calc_view_dir
+from tina.common import *
+from tina.advans import *
+from tina.core.shader import calc_view_dir
 
 
 ti.init(ti.opengl)

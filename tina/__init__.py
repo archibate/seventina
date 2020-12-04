@@ -6,8 +6,8 @@ bl_info = {
         'blender': (2, 81, 0),
         'location': 'Render -> Seventina Options',
         'support': 'COMMUNITY',
-        'wiki_url': 'https://github.com/archibate/seventina/wiki',
-        'tracker_url': 'https://github.com/archibate/seventina/issues',
+        'wiki_url': 'https://github.com/archibate/tina/wiki',
+        'tracker_url': 'https://github.com/archibate/tina/issues',
         'category': 'Render',
 }
 
@@ -43,28 +43,28 @@ def __getattr__():
             gettr.entered = True
 
             try:
-                return __import__(f'seventina.{name}')
+                return __import__(f'tina.{name}')
             except ImportError:
                 pass
 
             for sm_name in ['core', 'util']:
                 try:
                     try:
-                        module = do_import(f'seventina.{sm_name}')
+                        module = do_import(f'tina.{sm_name}')
                     except ImportError:
                         continue
                     return getattr(module, name)
                 except AttributeError:
                     pass
                 try:
-                    return do_import(f'seventina.{sm_name}.{name}')
+                    return do_import(f'tina.{sm_name}.{name}')
                 except ImportError:
                     pass
 
             for sm_name in ['core', 'util']:
                 try:
                     try:
-                        module = do_import(f'seventina.{sm_name}.{name.lower()}')
+                        module = do_import(f'tina.{sm_name}.{name.lower()}')
                     except ImportError:
                         continue
                     return getattr(module, name)
@@ -75,7 +75,7 @@ def __getattr__():
                     'core.material', 'util.assimp']:
                 try:
                     try:
-                        module = do_import(f'seventina.{sm_name}')
+                        module = do_import(f'tina.{sm_name}')
                     except ImportError:
                         continue
                     return getattr(module, name)

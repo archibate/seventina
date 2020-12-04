@@ -6,8 +6,8 @@ bl_info = {
         'blender': (2, 81, 0),
         'location': 'Render -> Seventina Options',
         'support': 'TESTING',
-        'wiki_url': 'https://github.com/archibate/seventina/wiki',
-        'tracker_url': 'https://github.com/archibate/seventina/issues',
+        'wiki_url': 'https://github.com/archibate/tina/wiki',
+        'tracker_url': 'https://github.com/archibate/tina/issues',
         'warning': 'Development mode',
         'category': 'Render',
 }
@@ -49,8 +49,8 @@ registered = False
 
 def register():
     print('Seventina-Dev register...')
-    import seventina
-    seventina.register()
+    import tina
+    tina.register()
 
     global registered
     registered = True
@@ -59,8 +59,8 @@ def register():
 
 def unregister():
     print('Seventina-Dev unregister...')
-    import seventina
-    seventina.unregister()
+    import tina
+    tina.unregister()
 
     global registered
     registered = False
@@ -68,11 +68,11 @@ def unregister():
 
 
 def reload():
-    import seventina
+    import tina
     if registered:
-        seventina.unregister()
-    reload_package(seventina)
-    seventina.register()
+        tina.unregister()
+    reload_package(tina)
+    tina.register()
 
     import bpy
     bpy.context.scene.frame_current = bpy.context.scene.frame_current
