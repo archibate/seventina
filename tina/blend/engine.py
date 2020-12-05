@@ -154,7 +154,7 @@ class BlenderEngine(tina.Engine):
         self.lighting.light_colors[i] = color.tolist()
 
     def render_object(self, object):
-        verts, norms = self.cache.lookup(blender_get_object_mesh, object)
+        verts, norms, coors = self.cache.lookup(blender_get_object_mesh, object)
         if not len(verts):
             return
 
@@ -164,6 +164,8 @@ class BlenderEngine(tina.Engine):
         self.set_face_verts(verts)
         if self.smoothing:
             self.set_face_norms(norms)
+        if self.texturing:
+            self.set_face_coors(coors)
         self.render(self.shader)
 
     def update_region_data(self, region3d):
@@ -223,6 +225,16 @@ def bmesh_face_norms_to_numpy(bm):
     return np.array(norms, dtype=np.float32)
 
 
+def bmesh_face_coors_to_numpy(bm):
+    uv_lay = bm.loops.layers.uv.active
+    if uv_lay is None:
+        return np.zeros((len(bm.faces), 3, 2), dtype=np.float32)
+    coors = [[l[uv_lay].uv for l in f.loops] for f in bm.faces]
+    if len(coors) == 0:
+        return np.zeros((0, 3, 2), dtype=np.float32)
+    return np.array(coors, dtype=np.float32)
+
+
 def blender_get_object_mesh(object):
     import bmesh
     bm = bmesh.new()
@@ -232,4 +244,5 @@ def blender_get_object_mesh(object):
     bmesh.ops.triangulate(bm, faces=bm.faces)
     verts = bmesh_verts_to_numpy(bm)[bmesh_faces_to_numpy(bm)]
     norms = bmesh_face_norms_to_numpy(bm)
-    return verts, norms
+    coors = bmesh_face_coors_to_numpy(bm)
+    return verts, norms, coors

@@ -49,7 +49,7 @@ def Def(diffuse, specular, shineness, normal):
     '''
     Name: blinn_phong
     Category: shader
-    Inputs: normal:v diffuse:c specular:a shineness:a normal:v
+    Inputs: diffuse:c specular:a shineness:a normal:v
     Output: material:m
     '''
 
@@ -79,10 +79,10 @@ class Def:
     Output: pos:v% normal:v% texcoord:v%
     '''
 
-    def __init__(name):
+    def __init__(self):
         self.pos = tina.Input('pos')
-        self.pos = tina.Input('normal')
-        self.pos = tina.Input('texcoord')
+        self.normal = tina.Input('normal')
+        self.texcoord = tina.Input('texcoord')
 
 
 @A.register
@@ -115,7 +115,7 @@ def Def(x, y, z):
     Name: vector_constant
     Category: input
     Inputs: x:f y:f z:f
-    Output: value:a
+    Output: vector:v
     '''
 
     return tina.Const(tina.V(x, y, z))
