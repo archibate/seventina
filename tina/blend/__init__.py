@@ -255,7 +255,7 @@ def register():
     for panel in get_panels():
         panel.COMPAT_ENGINES.add('TINA')
 
-    ui.register()
+    options.register()
     worker.register()
 
 

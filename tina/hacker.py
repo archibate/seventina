@@ -11,11 +11,17 @@ hasattr(ti, '_tinahacked') or setattr(ti, '_tinahacked', 1) or setattr(ti,
         ) or setattr(ti, 'tau', __import__('math').tau) or setattr(ti, 'GUI',
         (lambda f: __import__('functools').wraps(f)(lambda x='Tina', y=512,
         *z, **w: f(x, tuple(y) if isinstance(y, ti.Matrix) else y, *z, **w)
-        ))(ti.GUI)) or print('[Tina] Taichi properties hacked')
+        ))(ti.GUI)) or setattr(ti, 'expr_init', (lambda f: lambda x: x if
+        isinstance(x, dict) else f(x))(ti.expr_init)) or setattr(ti,
+        'expr_init_func', (lambda f: lambda x: x if isinstance(x, dict) else
+        f(x))(ti.expr_init_func)) or print('[Tina] Taichi properties hacked')
 
 
 @eval('lambda x: x()')
 def _():
+    if hasattr(ti, 'smart'):
+        return
+
     ti.smart = lambda x: x
 
     import copy, ast

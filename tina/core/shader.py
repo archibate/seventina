@@ -84,6 +84,11 @@ class Shader:
         pos = mapply_pos(engine.L2W[None], pos)
         normal = mapply_dir(engine.L2W[None], normal).normalized()
         view_dir = calc_view_dir(engine, pos)
+        pars = {
+            'pos': pos,
+            'normal': normal,
+            'texcoord': texcoord,
+        }
 
         res = V(0.0, 0.0, 0.0)
         res += self.lighting.get_ambient_light_color()
@@ -95,7 +100,7 @@ class Shader:
                 light_distance = light_dir.norm()
                 light_dir /= light_distance
                 lcolor /= light_distance**2
-                mcolor = self.material.brdf(normal, light_dir, view_dir)
+                mcolor = self.material.brdf(pars, light_dir, view_dir)
                 res += cos_i * lcolor * mcolor
 
         self.img[P] = res

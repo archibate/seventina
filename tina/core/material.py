@@ -1,45 +1,86 @@
 from ..common import *
+from ..advans import *
 
 
 @ti.data_oriented
-class Material:
+class Node:
+    arguments = []
+    defaults = []
+
     def __init__(self, **kwargs):
-        @ti.materialize_callback
-        def _():
-            for k, v in kwargs.items():
-                getattr(self, k)[None] = v
+        for dfl, key in zip(self.defaults, self.arguments):
+            if key in kwargs:
+                value = kwargs[key]
+            else:
+                if dfl is None:
+                    raise ValueError(f'`{key}` must specified for `{type(self)}`')
+                value = dfl
+
+            if isinstance(value, (int, float, ti.Matrix)):
+                value = Const(value)
+            elif isinstance(value, (list, tuple)):
+                value = Const(V(*value))
+            elif isinstance(value, str):
+                if any(value.endswith(x) for x in ['.png', '.jpg', '.bmp']):
+                    value = Texture(value)
+                else:
+                    value = Input(value)
+            setattr(self, key, value)
+
+    def __call__(self, pars):
+        raise NotImplementedError(type(self))
+
+
+class IMaterial(Node):
+    def brdf(self, pars, idir, odir):
+        raise NotImplementedError(type(self))
+
+
+class Const(Node):
+    def __init__(self, value):
+        self.value = value
 
     @ti.func
-    def brdf(self, nrm, idir, odir):
-        return 1
+    def __call__(self, pars):
+        return self.value
 
 
-# http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
-class CookTorrance(Material):
-    def __init__(self, **kwargs):
-        self.roughness = ti.field(float, ())
-        self.metallic = ti.field(float, ())
-        self.specular = ti.field(float, ())
-        self.basecolor = ti.Vector.field(3, float, ())
+class Input(Node):
+    def __init__(self, name):
+        self.name = name
 
-        kwargs.setdefault('roughness', 0.4)
-        kwargs.setdefault('metallic', 0.0)
-        kwargs.setdefault('specular', 0.5)
-        kwargs.setdefault('basecolor', (1, 1, 1))
+    @ti.func
+    def __call__(self, pars):
+        return pars[self.name]
 
+
+class Texture(Node):
+    arguments = ['texcoord']
+    defaults = ['texcoord']
+
+    def __init__(self, path, **kwargs):
+        self.texture = texture_as_field(path)
         super().__init__(**kwargs)
 
     @ti.func
-    def chi(self, v):
-        return 1 if v > 0 else 0
+    def __call__(self, pars):
+        coor = self.texcoord(pars) * V(*self.texture.shape)
+        return bilerp(self.texture, coor)
+
+
+# http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
+class CookTorrance(IMaterial):
+    arguments = ['normal', 'roughness', 'metallic', 'specular', 'basecolor']
+    defaults = ['normal', 0.4, 0.0, 0.5, (1.0, 1.0, 1.0)]
 
     @ti.func
-    def brdf(self, nrm, idir, odir):
+    def brdf(self, pars, idir, odir):
         EPS = 1e-10
-        roughness = self.roughness[None]
-        metallic = self.metallic[None]
-        specular = self.specular[None]
-        basecolor = self.basecolor[None]
+        roughness = self.roughness(pars)
+        metallic = self.metallic(pars)
+        specular = self.specular(pars)
+        basecolor = self.basecolor(pars)
+        nrm = self.normal(pars)
 
         half = (idir + odir).normalized()
         NoH = max(EPS, half.dot(nrm))
@@ -70,16 +111,26 @@ class CookTorrance(Material):
         return kd * basecolor + ks * fdf * vdf * ndf
 
 
-class BlinnPhong(Material):
-    def __init__(self, **kwargs):
-        self.shineness = ti.field(float, ())
-
-        kwargs.setdefault('shineness', 10)
-
-        super().__init__(**kwargs)
+class BlinnPhong(IMaterial):
+    arguments = ['normal', 'diffuse', 'specular', 'shineness']
+    defaults = ['normal', (1.0, 1.0, 1.0), 0.4, 20.0]
 
     @ti.func
-    def brdf(self, nrm, idir, odir):
-        shineness = self.shineness[None]
+    def brdf(self, pars, idir, odir):
+        diffuse = self.diffuse(pars)
+        specular = self.specular(pars)
+        shineness = self.shineness(pars)
+        nrm = self.normal(pars)
+
         half = (odir + idir).normalized()
-        return (shineness + 8) / 8 * pow(max(0, half.dot(nrm)), shineness)
+        ks = (shineness + 8) / 8 * pow(max(0, half.dot(nrm)), shineness)
+        return diffuse + ks * specular
+
+
+class Lambert(IMaterial):
+    arguments = ['color']
+    defaults = [(1.0, 1.0, 1.0)]
+
+    @ti.func
+    def brdf(self, pars, idir, odir):
+        return self.color(pars)

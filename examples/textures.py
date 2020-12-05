@@ -10,9 +10,10 @@ camera = tina.Camera()
 img = ti.Vector.field(3, float, engine.res)
 
 lighting = tina.Lighting()
-material = tina.CookTorrance()
+material = tina.CookTorrance(
+        basecolor=tina.Texture('assets/cloth.jpg'),
+        )
 shader = tina.Shader(img, lighting, material)
-shader = tina.ChessboardShader(img)
 
 obj = tina.readobj('assets/monkey.obj')
 verts = obj['v'][obj['f'][:, :, 0]]
