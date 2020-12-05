@@ -68,6 +68,20 @@ class OutputPixelConverter:
         return (b << 16) + (g << 8) + r
 
 
+def get_material_from_node_group():
+    if not bpy.context.scene.tina_material_nodes:
+        return tina.CookTorrance()
+
+    tb = __import__('Taichi-Blend')
+    get_node_table = tb.node_system.utils.get_node_table  # move this to melt?
+
+    node_group = bpy.data.node_groups[bpy.context.scene.tina_material_nodes]
+    node_table = get_node_table(node_group)
+    material_output = node_table['Material Output']
+
+    return material_output
+
+
 class BlenderEngine(tina.Engine):
     def __init__(self):
         super().__init__((
@@ -84,7 +98,7 @@ class BlenderEngine(tina.Engine):
         self.color = ti.Vector.field(3, float, self.res)
 
         self.lighting = tina.Lighting(bpy.context.scene.tina_max_lights)
-        self.material = tina.CookTorrance()
+        self.material = get_material_from_node_group()
         self.shader = tina.Shader(self.color, self.lighting, self.material)
         self.camera = tina.Camera()
         self.accum = tina.Accumator(self.res)

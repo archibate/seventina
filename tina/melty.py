@@ -121,4 +121,18 @@ def Def(x, y, z):
     return tina.Const(tina.V(x, y, z))
 
 
+@A.register
+def Def(material):
+    '''
+    Name: material_output
+    Category: output
+    Inputs: material:m
+    Output:
+    '''
+
+    if material is None:
+        return tina.CookTorrance()
+    return material
+
+
 print(f'[Tina] Node system loaded: {len(A)} nodes')
