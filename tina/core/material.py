@@ -9,9 +9,8 @@ class Node:
 
     def __init__(self, **kwargs):
         for dfl, key in zip(self.defaults, self.arguments):
-            if key in kwargs:
-                value = kwargs[key]
-            else:
+            value = kwargs.get(key, None)
+            if value is None:
                 if dfl is None:
                     raise ValueError(f'`{key}` must specified for `{type(self)}`')
                 value = dfl

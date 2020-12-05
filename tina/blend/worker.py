@@ -15,7 +15,7 @@ class TaichiWorkerMT:
         self.t.start()
 
     def stop(self):
-        print('Stopping worker')
+        print('[Tina] Stopping worker')
         try:
             if self.running:
                 self.running = False
@@ -24,7 +24,7 @@ class TaichiWorkerMT:
             print(e)
 
     def main(self):
-        print('Worker started')
+        print('[Tina] Worker started')
         while self.running:
             try:
                 func, resptr = self.q.get(block=True, timeout=1)
@@ -161,7 +161,7 @@ worker = None
 
 def register():
     global worker
-    worker = TaichiWorkerMT()
+    worker = TaichiWorker()
 
 
 def unregister():

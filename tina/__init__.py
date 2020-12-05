@@ -43,7 +43,7 @@ def __getattr__():
             gettr.entered = True
 
             try:
-                return __import__(f'tina.{name}')
+                return do_import(f'tina.{name}')
             except ImportError:
                 pass
 
