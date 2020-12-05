@@ -36,12 +36,13 @@ class Engine:
                 yield pos, wei
 
     def __init__(self, res=512, maxfaces=65536,
-            smoothing=False, culling=True, clipping=False):
+            smoothing=False, texturing=False, culling=True, clipping=False):
 
         self.res = tovector((res, res) if isinstance(res, int) else res)
         self.culling = culling
         self.clipping = clipping
         self.smoothing = smoothing
+        self.texturing = texturing
 
         self.depth = ti.field(int, self.res)
         self.occup = ti.field(int, self.res)
@@ -51,6 +52,8 @@ class Engine:
         self.verts = ti.Vector.field(3, float, (maxfaces, 3))
         if self.smoothing:
             self.norms = ti.Vector.field(3, float, (maxfaces, 3))
+        if self.texturing:
+            self.coors = ti.Vector.field(2, float, (maxfaces, 3))
 
         self.bcn = ti.Vector.field(2, float, maxfaces)
         self.can = ti.Vector.field(2, float, maxfaces)
@@ -171,17 +174,23 @@ class Engine:
     @ti.func
     def interpolate(self, shader: ti.template(), P, f, facing, wei, A, B, C):
         pos = wei.x * A + wei.y * B + wei.z * C
+
         normal = V(0., 0., 0.)
         if ti.static(self.smoothing):
             An, Bn, Cn = self.get_face_normals(f)
-            # TODO: actually we need to slerp normal?
-            normal = (wei.x * An + wei.y * Bn + wei.z * Cn)
+            normal = wei.x * An + wei.y * Bn + wei.z * Cn
         else:
             normal = (B - A).cross(C - A)  # let the shader normalize it
+
+        texcoord = V(0., 0.)
+        if ti.static(self.texturing):
+            At, Bt, Ct = self.get_face_texcoords(f)
+            texcoord = wei.x * At + wei.y * Bt + wei.z * Ct
+
         if ti.static(not self.culling):
             if facing < 0:
                 normal = -normal
-        shader.shade_color(self, P, f, pos, normal)
+        shader.shade_color(self, P, f, pos, normal, texcoord)
 
     @ti.func
     def get_faces_range(self):
@@ -198,6 +207,11 @@ class Engine:
         A, B, C = self.norms[f, 0], self.norms[f, 1], self.norms[f, 2]
         return A, B, C
 
+    @ti.func
+    def get_face_texcoords(self, f):
+        A, B, C = self.coors[f, 0], self.coors[f, 1], self.coors[f, 2]
+        return A, B, C
+
     @ti.kernel
     def set_face_verts(self, verts: ti.ext_arr()):
         self.nfaces[None] = min(verts.shape[0], self.verts.shape[0])
@@ -208,10 +222,19 @@ class Engine:
 
     @ti.kernel
     def set_face_norms(self, norms: ti.ext_arr()):
+        ti.static_assert(self.smoothing)
         for i in range(self.nfaces[None]):
             for k in ti.static(range(3)):
                 for l in ti.static(range(3)):
                     self.norms[i, k][l] = norms[i, k, l]
+
+    @ti.kernel
+    def set_face_coors(self, coors: ti.ext_arr()):
+        ti.static_assert(self.texturing)
+        for i in range(self.nfaces[None]):
+            for k in ti.static(range(3)):
+                for l in ti.static(range(2)):
+                    self.coors[i, k][l] = coors[i, k, l]
 
     def set_camera(self, camera):
         L2W = camera.model

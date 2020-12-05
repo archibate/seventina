@@ -75,6 +75,7 @@ class BlenderEngine(tina.Engine):
             bpy.context.scene.tina_resolution_y),
             bpy.context.scene.tina_max_faces,
             bpy.context.scene.tina_smoothing,
+            bpy.context.scene.tina_texturing,
             bpy.context.scene.tina_culling,
             bpy.context.scene.tina_clipping)
         self.output = OutputPixelConverter()
