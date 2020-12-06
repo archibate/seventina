@@ -68,14 +68,11 @@ class OutputPixelConverter:
         return (b << 16) + (g << 8) + r
 
 
-def get_material_from_node_group():
-    if not bpy.context.scene.tina_material_nodes:
-        return tina.CookTorrance()
-
+def get_material_from_node_group(node_group_name):
     tb = __import__('Taichi-Blend')
     get_node_table = tb.node_system.utils.get_node_table  # move this to melt?
 
-    node_group = bpy.data.node_groups[bpy.context.scene.tina_material_nodes]
+    node_group = bpy.data.node_groups[node_group_name]
     node_table = get_node_table(node_group)
     material_output = node_table['Material Output']
 
@@ -83,6 +80,13 @@ def get_material_from_node_group():
 
 
 class BlenderEngine(tina.Engine):
+    def make_shader_of_object(self, object):
+        if not object.tina_material_nodes:
+            return None
+        material = get_material_from_node_group(object.tina_material_nodes)
+        shader = tina.Shader(self.color, self.lighting, material)
+        return shader
+
     def __init__(self):
         super().__init__((
             bpy.context.scene.tina_resolution_x,
@@ -92,19 +96,31 @@ class BlenderEngine(tina.Engine):
             bpy.context.scene.tina_texturing,
             bpy.context.scene.tina_culling,
             bpy.context.scene.tina_clipping)
+
         self.output = OutputPixelConverter()
-        self.cache = IDCache()
+        self.cache = IDCache(lambda o: (type(o).__name__, o.name))
 
-        self.color = ti.Vector.field(3, float, self.res)
-
-        self.lighting = tina.Lighting(bpy.context.scene.tina_max_lights)
-        self.material = get_material_from_node_group()
-        self.shader = tina.Shader(self.color, self.lighting, self.material)
         self.camera = tina.Camera()
         self.accum = tina.Accumator(self.res)
+        self.lighting = tina.Lighting(bpy.context.scene.tina_max_lights)
+        self.color = ti.Vector.field(3, float, self.res)
+
+        self.default_shader = tina.Shader(self.color, self.lighting,
+                tina.BlinnPhong())
+        self.shaders = {}
+        for object in bpy.context.scene.objects:
+            shader = self.make_shader_of_object(object)
+            if shader is not None:
+                self.shaders[object.name] = shader
 
     def render_scene(self, is_final):
-        self.randomize_bias(self.accum.count[None] == 0)
+        is_center = False
+        if not is_final:
+            if self.accum.count[None] == 0:
+                is_center = True
+            if bpy.context.scene.tina_viewport_samples == 1:
+                is_center = True
+        self.randomize_bias(is_center)
         self.clear_depth()
         self.color.fill(0)
 
@@ -158,6 +174,8 @@ class BlenderEngine(tina.Engine):
         if not len(verts):
             return
 
+        shader = self.shaders.get(object.name, self.default_shader)
+
         self.camera.model = np.array(object.matrix_world)
         self.set_camera(self.camera)
 
@@ -166,7 +184,7 @@ class BlenderEngine(tina.Engine):
             self.set_face_norms(norms)
         if self.texturing:
             self.set_face_coors(coors)
-        self.render(self.shader)
+        self.render(shader)
 
     def update_region_data(self, region3d):
         pers = np.array(region3d.perspective_matrix)

@@ -1,6 +1,7 @@
 class IDCache:
-    def __init__(self):
+    def __init__(self, ident):
         self.lut = {}
+        self.ident = ident
 
     def lookup(self, func, object):
         idx = self.ident(object)
@@ -10,13 +11,13 @@ class IDCache:
         self.lut[idx] = value
         return value
 
+    def clear(self):
+        self.lut.clear()
+
     def invalidate(self, object):
         idx = self.ident(object)
         if idx in self.lut:
             del self.lut[idx]
-
-    def ident(self, object):
-        return (type(object).__name__, object.name)
 
 
 def view_plane(camd, winx, winy, xasp, yasp):    
