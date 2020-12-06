@@ -69,8 +69,7 @@ class OutputPixelConverter:
 
 
 def get_material_from_node_group(node_group_name):
-    tb = __import__('Taichi-Blend')
-    get_node_table = tb.node_system.utils.get_node_table  # TODO: move this to melt?
+    from melt.blender import get_node_table
 
     node_group = bpy.data.node_groups[node_group_name]
     node_table = get_node_table(node_group)
