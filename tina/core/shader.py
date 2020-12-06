@@ -39,7 +39,7 @@ class NormalShader:
 
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
-        normal = mapply_dir(engine.L2W[None], normal).normalized()
+        normal = (engine.W2LT[None] @ normal).normalized()
         self.img[P] = normal * 0.5 + 0.5
 
 
@@ -82,7 +82,7 @@ class Shader:
     @ti.func
     def shade_color(self, engine, P, f, pos, normal, texcoord):
         pos = mapply_pos(engine.L2W[None], pos)
-        normal = mapply_dir(engine.L2W[None], normal).normalized()
+        normal = (engine.W2LT[None] @ normal).normalized()
         view_dir = calc_view_dir(engine, pos)
         pars = {
             'pos': pos,

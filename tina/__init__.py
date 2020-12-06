@@ -72,7 +72,7 @@ def __getattr__():
                     pass
 
             for sm_name in ['common', 'advans', 'core.shader',
-                    'core.material', 'util.assimp']:
+                    'core.material', 'core.camera', 'util.assimp']:
                 try:
                     try:
                         module = do_import(f'tina.{sm_name}')
