@@ -33,6 +33,20 @@ A = NodeSystem()
 
 
 @A.register
+def Def(material):
+    '''
+    Name: material_output
+    Category: output
+    Inputs: material:m
+    Output:
+    '''
+
+    if material is None:
+        return tina.CookTorrance()
+    return material
+
+
+@A.register
 def Def(color):
     '''
     Name: lambert
@@ -122,17 +136,49 @@ def Def(x, y, z):
 
 
 @A.register
-def Def(material):
+def Def(expr, lhs, rhs):
     '''
-    Name: material_output
-    Category: output
-    Inputs: material:m
-    Output:
+    Name: custom_function
+    Category: converter
+    Inputs: expr:s lhs:a rhs:a
+    Output: result:a
     '''
 
-    if material is None:
-        return tina.CookTorrance()
-    return material
+    import taichi as ti
+    expr = expr.replace('int', 'ti.ti_int')
+    expr = expr.replace('float', 'ti.ti_float')
+    expr = expr.replace('max', 'ti.ti_max')
+    expr = expr.replace('min', 'ti.ti_min')
+    expr = expr.replace('abs', 'ti.ti_abs')
+    func = eval(f'lambda x, y: ({expr})')
+    return lambda pars: func(lhs(pars), rhs(pars))
+
+
+@A.register
+class Def(tina.Node):
+    '''
+    Name: map_range
+    Category: converter
+    Inputs: value:a src0:f src1:f dst0:f dst1:f clamp:b
+    Output: result:a
+    '''
+
+    def __init__(self, value, src0=0, src1=1, dst0=0, dst1=1, clamp=False):
+        assert isinstance(value, IField)
+
+        self.value = value
+        self.src0 = src0
+        self.src1 = src1
+        self.dst0 = dst0
+        self.dst1 = dst1
+        self.clamp = clamp
+
+    @ti.func
+    def __call__(self, pars):
+        k = (self.value(pars) - self.src0) / (self.src1 - self.src0)
+        if ti.static(self.clamp):
+            k = clamp(k, 0, 1)
+        return self.dst1 * k + self.dst0 * (1 - k)
 
 
 print(f'[Tina] Node system loaded: {len(A)} nodes')

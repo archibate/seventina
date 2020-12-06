@@ -63,7 +63,8 @@ class Texture(Node):
 
     @ti.func
     def __call__(self, pars):
-        coor = self.texcoord(pars) * V(*self.texture.shape)
+        maxcoor = V(*self.texture.shape) - 1
+        coor = self.texcoord(pars) * maxcoor
         return bilerp(self.texture, coor)
 
 
